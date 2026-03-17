@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+    --color-background: hsl(0 0% 100%);
+    --color-foreground: hsl(240 10% 3.9%);
+    --color-border: hsl(240 5.9% 90%);
+    --radius: 0.5rem;
+}
+
+@layer base {
+    body {
+        @apply bg-zinc-950 text-zinc-50 m-0 p-0 overflow-hidden;
+        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    }
+}
+
+@layer utilities {
+    .hidden-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hidden-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}
