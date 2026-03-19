@@ -7,7 +7,7 @@ import { PostFX } from './components/canvas/PostFX';
 import { useAppStore } from './store/appStore';
 import { loadCustomFont } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
-import Header from './components/ui/Header';
+import { Header } from './components/ui/Header';
 import { signInWithGoogle, openLemonSqueezyCheckout } from './lib/commercial';
 
 function App() {
