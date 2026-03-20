@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AppState, GlitchSettings, MotionSettings, RenderSettings } from '../types/state';
+import defaultFontUrl from '../lib/fonts/Inter_Bold.json?url';
 
 interface AppStore extends AppState {
     currentLineIndex: number;
@@ -21,7 +22,7 @@ interface AppStore extends AppState {
 const initialRender: RenderSettings = {
     text: 'GLITCH\nTEXT',
     textMode: '3D',
-    font: '/src/lib/fonts/Inter_Bold.json',
+    font: defaultFontUrl,
     customFontData: null,
     customFontUrl: null,
     fontSize: 1.0,
