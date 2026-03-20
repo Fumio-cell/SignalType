@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, openLemonSqueezyCheckout } from '../../lib/commercial';
-import { LogIn, LogOut, Zap, Activity } from 'lucide-react';
+import { LogIn, LogOut, Zap, Activity, Info, X } from 'lucide-react';
 
 export const Header: React.FC = () => {
     const [user, setUser] = useState<any>(null);
     const [isPro, setIsPro] = useState(false);
+    const [showInfo, setShowInfo] = useState(false);
 
     useEffect(() => {
         const client = supabase;
@@ -67,6 +68,9 @@ export const Header: React.FC = () => {
                 </div>
                 <div className="app-separator">/</div>
                 <div className="app-name">SignalType</div>
+                <button onClick={() => setShowInfo(true)} className="info-btn">
+                    <Info className="w-4 h-4" />
+                </button>
             </div>
 
             <div className="header-right">
@@ -221,7 +225,61 @@ export const Header: React.FC = () => {
                     color: #fff;
                     background: rgba(255, 255, 255, 0.1);
                 }
-            `}</style>
+            `}
+                .info-modal-overlay {
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+                    display: flex; align-items: center; justify-content: center; z-index: 99999;
+                }
+                .info-modal {
+                    background: #111827; border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 16px; padding: 32px; max-width: 600px;
+                    width: 90%; max-height: 85vh; overflow-y: auto;
+                    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+                    position: relative;
+                    text-align: left;
+                }
+                .info-modal h2 { margin-top: 0; color: #f8fafc; font-size: 1.5rem; }
+                .info-modal h3 { color: #38bdf8; font-size: 0.85rem; margin-bottom: 24px; font-weight: 600; }
+                .info-modal p { color: #cbd5e1; line-height: 1.6; font-size: 0.9rem; margin-bottom: 12px; }
+                .info-modal ul { color: #cbd5e1; font-size: 0.85rem; padding-left: 20px; list-style-type: none; margin:0; padding:0; }
+                .info-modal li { margin-bottom: 8px; font-weight: 500; color: #94a3b8; }
+                .info-close {
+                    position: absolute; top: 16px; right: 16px;
+                    background: transparent; border: none; color: #64748b;
+                    cursor: pointer; padding: 6px; border-radius: 6px; transition: all 0.2s;
+                }
+                .info-close:hover { color: #f8fafc; background: rgba(255,255,255,0.1); }
+                .info-btn {
+                    background: transparent; border: none; color: #64748b; cursor: pointer;
+                    display: flex; align-items: center; justify-content: center;
+                    margin-left: 12px; transition: color 0.2s;
+                }
+                .info-btn:hover { color: #f8fafc; }
+    
+            </style>
+        
+            {showInfo && (
+                <div className="info-modal-overlay" onClick={() => setShowInfo(false)}>
+                    <div className="info-modal" onClick={e => e.stopPropagation()}>
+                        <button className="info-close" onClick={() => setShowInfo(false)}><X className="w-5 h-5"/></button>
+                        <h2>SignalType</h2>
+                        <h3>Kinetic Typography & Typographic Interference | キネティック・タイポグラフィ＆文字干渉システム</h3>
+                        
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', marginBottom: '8px' }}>EN</div>
+                            <p>SignalType reimagines text as kinetic light and geometry. Focused entirely on typography, it turns inputted words and characters into dynamic 3D elements that react to invisible signals, audio inputs, and glitch algorithms. It generates stunning animated title sequences, corrupted letterforms, and abstract typographic posters perfect for modern digital art and video intros.</p>
+                            <ul><li>Key Features: 3D Text Rendering, Glitch Injection, Audio-Reactive Typography, Custom Font Loading.</li></ul>
+                        </div>
+
+                        <div>
+                            <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', marginBottom: '8px' }}>JP</div>
+                            <p>SignalTypeは、テキスト（文字）を動的な光や幾何学として再解釈するツールです。入力された文字を3Dのキネティック（動的）オブジェクトへと変換し、音からの入力やグリッチ・アルゴリズムなど、目に見えない「シグナル」に反応して文字が破壊・再構築されます。美しくも破壊的なタイトルシーケンスや、アブストラクトなタイポグラフィ・アート、グリッチポスターなどをブラウザ上で容易に生成することができます。</p>
+                            <ul><li>主要機能: 3Dテキスト・レンダリング、グリッチ・インジェクション、オーディオ・リアクティブタイポグラフィ、カスタムフォント読み込み。</li></ul>
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };
