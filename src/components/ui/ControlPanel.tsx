@@ -9,6 +9,8 @@ import poppinsRegUrl from '@/lib/fonts/Poppins-Regular.ttf?url';
 import poppinsBoldUrl from '@/lib/fonts/Poppins-Bold.ttf?url';
 import crimsonRegUrl from '@/lib/fonts/CrimsonText-Regular.ttf?url';
 import spaceMonoUrl from '@/lib/fonts/SpaceMono-Regular.ttf?url';
+import shipporiMinchoUrl from '@/lib/fonts/ShipporiMincho-Regular.ttf?url';
+import zenKakuUrl from '@/lib/fonts/ZenKakuGothicNew-Regular.ttf?url';
 
 const PRESET_FONTS = [
     { label: 'Inter Bold (3D Only)', url: defaultFontUrl, isTTF: false },
@@ -16,6 +18,8 @@ const PRESET_FONTS = [
     { label: 'Poppins Bold (2D/3D)', url: poppinsBoldUrl, isTTF: true },
     { label: 'Crimson Text (Serif)', url: crimsonRegUrl, isTTF: true },
     { label: 'Space Mono (Tech)', url: spaceMonoUrl, isTTF: true },
+    { label: 'Zen Kaku Gothic (日本語/ゴシック)', url: zenKakuUrl, isTTF: true },
+    { label: 'Shippori Mincho (日本語/明朝)', url: shipporiMinchoUrl, isTTF: true },
 ];
 
 export function ControlPanel() {
