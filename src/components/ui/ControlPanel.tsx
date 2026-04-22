@@ -4,6 +4,20 @@ import { useAppStore } from '@/store/appStore';
 import { exportRecipe, importRecipe } from '@/lib/export/recipe';
 import { loadCustomFont } from '@/lib/fontLoader';
 
+import defaultFontUrl from '@/lib/fonts/Inter_Bold.json?url';
+import helvetikerUrl from 'three/examples/fonts/helvetiker_bold.typeface.json?url';
+import optimerUrl from 'three/examples/fonts/optimer_bold.typeface.json?url';
+import gentilisUrl from 'three/examples/fonts/gentilis_bold.typeface.json?url';
+import droidSansUrl from 'three/examples/fonts/droid/droid_sans_bold.typeface.json?url';
+
+const PRESET_FONTS = [
+    { label: 'Inter Bold (Modern)', url: defaultFontUrl },
+    { label: 'Helvetiker Bold (Clean)', url: helvetikerUrl },
+    { label: 'Optimer Bold (Round)', url: optimerUrl },
+    { label: 'Gentilis Bold (Serif)', url: gentilisUrl },
+    { label: 'Droid Sans Bold (Tech)', url: droidSansUrl },
+];
+
 export function ControlPanel() {
     const {
         settings,
@@ -151,8 +165,24 @@ export function ControlPanel() {
                             </select>
                         </div>
                         <div className="space-y-1.5 flex flex-col pt-4 mt-4 border-t border-zinc-800/50">
-                            <label className="text-xs text-zinc-400 font-medium flex items-center gap-1.5">
-                                Custom Font {!isPro && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
+                            <label className="text-xs text-zinc-400 font-medium">Preset Font (3D Only)</label>
+                            <select
+                                value={settings.render.customFontData ? 'custom' : settings.render.font}
+                                onChange={(e) => {
+                                    if (e.target.value !== 'custom') {
+                                        updateRenderSettings({ font: e.target.value, customFontData: null, customFontUrl: null });
+                                    }
+                                }}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/50"
+                            >
+                                {PRESET_FONTS.map(pf => (
+                                    <option key={pf.label} value={pf.url}>{pf.label}</option>
+                                ))}
+                                {settings.render.customFontData && <option value="custom">Custom Uploaded Font</option>}
+                            </select>
+
+                            <label className="text-xs text-zinc-400 font-medium flex items-center gap-1.5 mt-3">
+                                Custom Font Import {!isPro && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
                             </label>
                             <div className="flex gap-2">
                                 <input
@@ -167,11 +197,11 @@ export function ControlPanel() {
                                     className={`flex-1 py-1.5 rounded text-xs flex items-center justify-center gap-2 transition-colors ${!isPro ? 'bg-amber-900/20 text-amber-500 border border-amber-900/30 font-bold' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
                                 >
                                     <FileText className="w-3.5 h-3.5" />
-                                    {isPro ? 'Import Font' : 'Import Font (PRO)'}
+                                    {isPro ? 'Import TTF/OTF' : 'Import TTF/OTF (PRO)'}
                                 </button>
                                 {settings.render.customFontData && (
                                     <button
-                                        onClick={() => updateRenderSettings({ customFontData: null, customFontUrl: null, font: '/src/lib/fonts/Inter_Bold.json' })}
+                                        onClick={() => updateRenderSettings({ customFontData: null, customFontUrl: null, font: defaultFontUrl })}
                                         className="px-2 bg-zinc-800 hover:bg-rose-900/50 text-zinc-400 hover:text-rose-400 rounded transition-colors text-xs"
                                         title="Clear Custom Font"
                                     >
@@ -180,7 +210,7 @@ export function ControlPanel() {
                                 )}
                             </div>
                             <div className="text-[10px] text-zinc-500 truncate">
-                                {settings.render.customFontData ? `Active: ${settings.render.font}` : 'Using default font'}
+                                {settings.render.customFontData ? `Active: ${settings.render.font}` : 'Using Preset Font'}
                             </div>
                         </div>
 
