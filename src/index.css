@@ -10,7 +10,7 @@
 @layer base {
     body {
         @apply bg-zinc-950 text-zinc-50 m-0 p-0 overflow-hidden;
-        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        font-family: 'Inter', 'FOT-Seurat Pro', 'Seurat Pro', 'Seurat', 'スーラ Pro', 'Hiragino Maru Gothic ProN', system-ui, Avenir, Helvetica, Arial, sans-serif;
     }
 }
 
