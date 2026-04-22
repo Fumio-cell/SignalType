@@ -5,17 +5,17 @@ import { exportRecipe, importRecipe } from '@/lib/export/recipe';
 import { loadCustomFont } from '@/lib/fontLoader';
 
 import defaultFontUrl from '@/lib/fonts/Inter_Bold.json?url';
-import helvetikerUrl from 'three/examples/fonts/helvetiker_bold.typeface.json?url';
-import optimerUrl from 'three/examples/fonts/optimer_bold.typeface.json?url';
-import gentilisUrl from 'three/examples/fonts/gentilis_bold.typeface.json?url';
-import droidSansUrl from 'three/examples/fonts/droid/droid_sans_bold.typeface.json?url';
+import robotoRegUrl from '@/lib/fonts/Roboto-Regular.ttf?url';
+import robotoBoldUrl from '@/lib/fonts/Roboto-Bold.ttf?url';
+import loraRegUrl from '@/lib/fonts/Lora-Regular.ttf?url';
+import spaceMonoUrl from '@/lib/fonts/SpaceMono-Regular.ttf?url';
 
 const PRESET_FONTS = [
-    { label: 'Inter Bold (Modern)', url: defaultFontUrl },
-    { label: 'Helvetiker Bold (Clean)', url: helvetikerUrl },
-    { label: 'Optimer Bold (Round)', url: optimerUrl },
-    { label: 'Gentilis Bold (Serif)', url: gentilisUrl },
-    { label: 'Droid Sans Bold (Tech)', url: droidSansUrl },
+    { label: 'Inter Bold (3D Only)', url: defaultFontUrl, isTTF: false },
+    { label: 'Roboto Regular (2D/3D)', url: robotoRegUrl, isTTF: true },
+    { label: 'Roboto Bold (2D/3D)', url: robotoBoldUrl, isTTF: true },
+    { label: 'Lora Regular (Serif)', url: loraRegUrl, isTTF: true },
+    { label: 'Space Mono (Tech)', url: spaceMonoUrl, isTTF: true },
 ];
 
 export function ControlPanel() {
@@ -54,6 +54,31 @@ export function ControlPanel() {
             importRecipe(file);
         }
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handlePresetChange = async (url: string) => {
+        if (url === 'custom') return;
+        
+        const preset = PRESET_FONTS.find(p => p.url === url);
+        if (!preset) return;
+
+        if (preset.isTTF) {
+            try {
+                const response = await fetch(preset.url);
+                const arrayBuffer = await response.arrayBuffer();
+                const customFont = await loadCustomFont(arrayBuffer, preset.label);
+                
+                updateRenderSettings({ 
+                    customFontData: customFont, 
+                    customFontUrl: preset.url, 
+                    font: preset.url 
+                });
+            } catch (err) {
+                console.error("Failed to load preset TTF:", err);
+            }
+        } else {
+            updateRenderSettings({ font: url, customFontData: null, customFontUrl: null });
+        }
     };
 
     const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,20 +190,16 @@ export function ControlPanel() {
                             </select>
                         </div>
                         <div className="space-y-1.5 flex flex-col pt-4 mt-4 border-t border-zinc-800/50">
-                            <label className="text-xs text-zinc-400 font-medium">Preset Font (3D Only)</label>
+                            <label className="text-xs text-zinc-400 font-medium">Preset Font / Typography</label>
                             <select
-                                value={settings.render.customFontData ? 'custom' : settings.render.font}
-                                onChange={(e) => {
-                                    if (e.target.value !== 'custom') {
-                                        updateRenderSettings({ font: e.target.value, customFontData: null, customFontUrl: null });
-                                    }
-                                }}
+                                value={(PRESET_FONTS.some(p => p.url === settings.render.font) || !settings.render.customFontData) ? settings.render.font : 'custom'}
+                                onChange={(e) => handlePresetChange(e.target.value)}
                                 className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/50"
                             >
                                 {PRESET_FONTS.map(pf => (
                                     <option key={pf.label} value={pf.url}>{pf.label}</option>
                                 ))}
-                                {settings.render.customFontData && <option value="custom">Custom Uploaded Font</option>}
+                                {settings.render.customFontData && !PRESET_FONTS.some(p => p.url === settings.render.font) && <option value="custom">Custom Uploaded Font</option>}
                             </select>
 
                             <label className="text-xs text-zinc-400 font-medium flex items-center gap-1.5 mt-3">
@@ -209,8 +230,10 @@ export function ControlPanel() {
                                     </button>
                                 )}
                             </div>
-                            <div className="text-[10px] text-zinc-500 truncate">
-                                {settings.render.customFontData ? `Active: ${settings.render.font}` : 'Using Preset Font'}
+                            <div className="text-[10px] text-zinc-500 truncate mt-1">
+                                {settings.render.customFontData 
+                                    ? `Typeface Active (${PRESET_FONTS.find(p => p.url === settings.render.font)?.label || settings.render.font})` 
+                                    : 'Internal JSON Font Active'}
                             </div>
                         </div>
 
