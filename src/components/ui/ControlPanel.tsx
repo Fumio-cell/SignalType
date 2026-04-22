@@ -5,16 +5,16 @@ import { exportRecipe, importRecipe } from '@/lib/export/recipe';
 import { loadCustomFont } from '@/lib/fontLoader';
 
 import defaultFontUrl from '@/lib/fonts/Inter_Bold.json?url';
-import robotoRegUrl from '@/lib/fonts/Roboto-Regular.ttf?url';
-import robotoBoldUrl from '@/lib/fonts/Roboto-Bold.ttf?url';
-import loraRegUrl from '@/lib/fonts/Lora-Regular.ttf?url';
+import poppinsRegUrl from '@/lib/fonts/Poppins-Regular.ttf?url';
+import poppinsBoldUrl from '@/lib/fonts/Poppins-Bold.ttf?url';
+import crimsonRegUrl from '@/lib/fonts/CrimsonText-Regular.ttf?url';
 import spaceMonoUrl from '@/lib/fonts/SpaceMono-Regular.ttf?url';
 
 const PRESET_FONTS = [
     { label: 'Inter Bold (3D Only)', url: defaultFontUrl, isTTF: false },
-    { label: 'Roboto Regular (2D/3D)', url: robotoRegUrl, isTTF: true },
-    { label: 'Roboto Bold (2D/3D)', url: robotoBoldUrl, isTTF: true },
-    { label: 'Lora Regular (Serif)', url: loraRegUrl, isTTF: true },
+    { label: 'Poppins Regular (2D/3D)', url: poppinsRegUrl, isTTF: true },
+    { label: 'Poppins Bold (2D/3D)', url: poppinsBoldUrl, isTTF: true },
+    { label: 'Crimson Text (Serif)', url: crimsonRegUrl, isTTF: true },
     { label: 'Space Mono (Tech)', url: spaceMonoUrl, isTTF: true },
 ];
 
