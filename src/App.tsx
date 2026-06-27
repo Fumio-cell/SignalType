@@ -107,7 +107,7 @@ function App() {
                             </svg>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-zinc-100">Drop files here</p>
+                            <p className="text-lg font-medium text-zinc-100">Drop files here</p>
                             <p className="text-sm text-zinc-400 mt-1">Audio (.wav, .mp3), Font (.ttf, .otf), or Recipe (.json)</p>
                         </div>
                     </div>

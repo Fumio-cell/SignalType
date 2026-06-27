@@ -95,7 +95,7 @@ export function AudioPlayerPanel() {
                             {isPlaying ? <Square className="w-4 h-4" fill="currentColor" /> : <Play className="w-4 h-4 ml-1" fill="currentColor" />}
                         </button>
                         <div className="flex flex-col w-64 md:w-96 ml-2 gap-1.5">
-                            <div className="flex justify-between items-center text-[10px] text-emerald-400 font-mono tracking-wider px-1">
+                            <div className="flex justify-between items-center text-[10px] text-emerald-400 font-mono px-1">
                                 <span>{formatTime(currentTime)}</span>
                                 <span className="text-zinc-500">{formatTime(duration)}</span>
                             </div>
