@@ -108,7 +108,7 @@ export function ControlPanel() {
             <div className="p-4 border-b border-zinc-800 bg-zinc-900/95 sticky top-0 z-10 backdrop-blur">
                 <div className="flex items-center gap-2 mb-4">
                     <Settings2 className="w-5 h-5 text-emerald-500" />
-                    <h2 className="text-lg font-bold">Parameters</h2>
+                    <h2 className="text-lg font-medium" style={{ fontFamily: "'Fraunces', serif" }}>Parameters</h2>
                     <div className="ml-auto flex gap-2">
                         <input
                             type="file"
@@ -139,7 +139,7 @@ export function ControlPanel() {
 
                 {/* Text Settings */}
                 <section className="space-y-4">
-                    <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2 uppercase tracking-wider">
+                    <h3 className="text-sm font-medium text-zinc-400 flex items-center gap-2" style={{ fontFamily: "'Fraunces', serif" }}>
                         <Type className="w-4 h-4 text-zinc-500" />
                         3D Text
                     </h3>
@@ -254,7 +254,7 @@ export function ControlPanel() {
 
                             <div className={`space-y-1.5 transition-opacity ${settings.render.sequenceMode ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
                                 <div className="flex justify-between text-xs pt-2">
-                                    <label className="text-zinc-500 font-medium text-[10px] uppercase">Text Duration (s)</label>
+                                    <label className="text-zinc-500 font-medium text-[11px]">Text duration (s)</label>
                                     <span className="text-zinc-500 font-mono text-xs">{settings.render.sequenceDuration?.toFixed(1) || '0.8'}s</span>
                                 </div>
                                 <input
@@ -276,7 +276,7 @@ export function ControlPanel() {
 
                 {/* Global O/T Parameters */}
                 <section className="space-y-4">
-                    <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2 uppercase tracking-wider">
+                    <h3 className="text-sm font-medium text-zinc-400 flex items-center gap-2" style={{ fontFamily: "'Fraunces', serif" }}>
                         <AudioLines className="w-4 h-4 text-zinc-500" />
                         Core Dynamics
                     </h3>
@@ -312,7 +312,7 @@ export function ControlPanel() {
 
                 {/* Glitch Settings */}
                 <section className="space-y-4">
-                    <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2 uppercase tracking-wider">
+                    <h3 className="text-sm font-medium text-zinc-400 flex items-center gap-2" style={{ fontFamily: "'Fraunces', serif" }}>
                         <Zap className="w-4 h-4 text-zinc-500" />
                         Glitch FX
                     </h3>
