@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Download, Loader2, Zap } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportVideo } from '@/lib/export/exportVideo';
+import { DEMO_MODE, DEMO_MAX_SECONDS, IS_PRO, BUY_URL } from '@/config';
 
 export function ExportPanel() {
     const { duration } = useAppStore();
@@ -10,18 +11,12 @@ export function ExportPanel() {
     const [isExporting, setIsExporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
-    const [isPro, setIsPro] = useState(false);
-
-    useEffect(() => {
-        const handleAuth = (e: any) => setIsPro(e.detail.isPro);
-        window.addEventListener('auth:status', handleAuth as EventListener);
-        return () => window.removeEventListener('auth:status', handleAuth as EventListener);
-    }, []);
+    const [demoLimited, setDemoLimited] = useState(false);
 
     const handleGatedAction = (action: () => Promise<void>) => {
-        if (!isPro) {
+        if (!IS_PRO) {
             if (confirm('Exporting in 4K resolution is a PRO feature. Would you like to upgrade?')) {
-                window.dispatchEvent(new CustomEvent('app:buyPro'));
+                window.open(BUY_URL, '_blank', 'noopener,noreferrer');
             }
             return;
         }
@@ -60,6 +55,7 @@ export function ExportPanel() {
                         setStatusText(status);
                     }
                 });
+                if (DEMO_MODE) setDemoLimited(true);
             } catch (err: any) {
                 console.error(err);
                 alert(`Export failed: ${err.message}`);
@@ -84,11 +80,11 @@ export function ExportPanel() {
                 <select
                     value={resolution}
                     onChange={(e) => setResolution(e.target.value as any)}
-                    className={`bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-zinc-600 disabled:opacity-50 ${resolution === '4K' && !isPro ? 'text-amber-500 font-bold' : ''}`}
+                    className={`bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-zinc-600 disabled:opacity-50 ${resolution === '4K' && !IS_PRO ? 'text-amber-500 font-bold' : ''}`}
                     disabled={isExporting}
                 >
                     <option value="1080p">1080p (FHD)</option>
-                    <option value="4K">4K (Max 15s) {!isPro ? '🔒' : ''}</option>
+                    <option value="4K">4K (Max 15s) {!IS_PRO ? '🔒' : ''}</option>
                 </select>
             </div>
 
@@ -121,11 +117,18 @@ export function ExportPanel() {
             ) : (
                 <button
                     onClick={handleExport}
-                    className={`px-4 py-1.5 rounded flex items-center gap-2 text-sm font-medium transition-colors ${resolution === '4K' && !isPro ? 'bg-amber-600 hover:bg-amber-500' : 'bg-zinc-800 hover:bg-zinc-700'}`}
+                    className={`px-4 py-1.5 rounded flex items-center gap-2 text-sm font-medium transition-colors ${resolution === '4K' && !IS_PRO ? 'bg-amber-600 hover:bg-amber-500' : 'bg-zinc-800 hover:bg-zinc-700'}`}
                 >
-                    {resolution === '4K' && !isPro ? <Zap className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                    {resolution === '4K' && !isPro ? 'Get PRO to Export 4K' : 'Export'}
+                    {resolution === '4K' && !IS_PRO ? <Zap className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                    {resolution === '4K' && !IS_PRO ? 'Get PRO to Export 4K' : DEMO_MODE ? 'Export (10s preview)' : 'Export'}
                 </button>
+            )}
+
+            {DEMO_MODE && demoLimited && (
+                <p className="text-[11px] leading-snug text-amber-300/90">
+                    Demo export is limited to {DEMO_MAX_SECONDS} seconds.{' '}
+                    <a href={BUY_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline text-amber-200">Get the full version</a>
+                </p>
             )}
         </div>
     );

@@ -1,8 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Settings2, Upload, Download, Type, Zap, AudioLines, FileText } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportRecipe, importRecipe } from '@/lib/export/recipe';
 import { loadCustomFont } from '@/lib/fontLoader';
+import { IS_PRO, BUY_URL } from '@/config';
 
 import defaultFontUrl from '@/lib/fonts/Inter_Bold.json?url';
 import poppinsRegUrl from '@/lib/fonts/Poppins-Regular.ttf?url';
@@ -34,18 +35,11 @@ export function ControlPanel() {
     } = useAppStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fontInputRef = useRef<HTMLInputElement>(null);
-    const [isPro, setIsPro] = useState(false);
-
-    useEffect(() => {
-        const handleAuth = (e: any) => setIsPro(e.detail.isPro);
-        window.addEventListener('auth:status', handleAuth as EventListener);
-        return () => window.removeEventListener('auth:status', handleAuth as EventListener);
-    }, []);
 
     const handleGatedAction = (action: () => void, featureName: string) => {
-        if (!isPro) {
+        if (!IS_PRO) {
             if (confirm(`${featureName} is a PRO feature. Would you like to upgrade?`)) {
-                window.dispatchEvent(new CustomEvent('app:buyPro'));
+                window.open(BUY_URL, '_blank', 'noopener,noreferrer');
             }
             return;
         }
@@ -207,7 +201,7 @@ export function ControlPanel() {
                             </select>
 
                             <label className="text-xs text-zinc-400 font-medium flex items-center gap-1.5 mt-3">
-                                Custom Font Import {!isPro && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
+                                Custom Font Import {!IS_PRO && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
                             </label>
                             <div className="flex gap-2">
                                 <input
@@ -219,10 +213,10 @@ export function ControlPanel() {
                                 />
                                 <button
                                     onClick={() => fontInputRef.current?.click()}
-                                    className={`flex-1 py-1.5 rounded text-xs flex items-center justify-center gap-2 transition-colors ${!isPro ? 'bg-amber-900/20 text-amber-500 border border-amber-900/30 font-bold' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
+                                    className={`flex-1 py-1.5 rounded text-xs flex items-center justify-center gap-2 transition-colors ${!IS_PRO ? 'bg-amber-900/20 text-amber-500 border border-amber-900/30 font-bold' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
                                 >
                                     <FileText className="w-3.5 h-3.5" />
-                                    {isPro ? 'Import TTF/OTF' : 'Import TTF/OTF (PRO)'}
+                                    {IS_PRO ? 'Import TTF/OTF' : 'Import TTF/OTF (PRO)'}
                                 </button>
                                 {settings.render.customFontData && (
                                     <button
@@ -345,7 +339,7 @@ export function ControlPanel() {
                             <div className={`space-y-1.5 transition-opacity ${settings.glitch.rgbSplitEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
                                 <div className="flex justify-between text-xs">
                                     <label className="text-zinc-400 font-medium flex items-center gap-1.5">
-                                        RGB Split Spread {!isPro && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
+                                        RGB Split Spread {!IS_PRO && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
                                     </label>
                                     <span className="text-zinc-500">{settings.glitch.rgbSplit.toFixed(3)}</span>
                                 </div>
@@ -353,13 +347,13 @@ export function ControlPanel() {
                                     type="range" min="0" max="0.1" step="0.005"
                                     value={settings.glitch.rgbSplit}
                                     onChange={(e) => {
-                                        if (!isPro && e.target.value !== "0.01") { // Simple threshold check
+                                        if (!IS_PRO && e.target.value !== "0.01") { // Simple threshold check
                                             handleGatedAction(() => {}, "Advanced RGB split");
                                             return;
                                         }
                                         updateGlitchSettings({ rgbSplit: parseFloat(e.target.value) });
                                     }}
-                                    className={`w-full ${!isPro ? 'accent-amber-500' : 'accent-emerald-500'}`}
+                                    className={`w-full ${!IS_PRO ? 'accent-amber-500' : 'accent-emerald-500'}`}
                                 />
                             </div>
                         </div>

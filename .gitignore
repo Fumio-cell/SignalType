@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .npm-cache
+.env
+.npmrc

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ControlPanel } from './components/ui/ControlPanel';
 import { AudioPlayerPanel } from './components/ui/AudioPlayerPanel';
@@ -8,36 +8,11 @@ import { useAppStore } from './store/appStore';
 import { loadCustomFont } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
 import { Header } from './components/ui/Header';
-import { signInWithGoogle, openLemonSqueezyCheckout } from './lib/commercial';
 
 function App() {
     const [isDragging, setIsDragging] = useState(false);
-    const [userStatus, setUserStatus] = useState<{ user: any, isPro: boolean }>({ user: null, isPro: false });
     const setAudio = useAppStore(state => state.setAudio);
     const updateRenderSettings = useAppStore(state => state.updateRenderSettings);
-
-    const handleAuthStatus = useCallback((e: any) => {
-        setUserStatus(e.detail);
-    }, []);
-
-    useEffect(() => {
-        window.addEventListener('auth:status', handleAuthStatus as EventListener);
-        return () => window.removeEventListener('auth:status', handleAuthStatus as EventListener);
-    }, [handleAuthStatus]);
-
-    useEffect(() => {
-        const handleBuyPro = () => {
-            if (!userStatus.user) {
-                alert('Please login first to upgrade to PRO.');
-                signInWithGoogle();
-                return;
-            }
-            openLemonSqueezyCheckout(userStatus.user.id);
-        };
-
-        window.addEventListener('app:buyPro', handleBuyPro);
-        return () => window.removeEventListener('app:buyPro', handleBuyPro);
-    }, [userStatus]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();

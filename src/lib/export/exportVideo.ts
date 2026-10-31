@@ -1,5 +1,6 @@
 import { ArrayBufferTarget as MP4ArrayBufferTarget, Muxer as MP4Muxer } from 'mp4-muxer';
 import JSZip from 'jszip';
+import { DEMO_MODE, DEMO_MAX_SECONDS } from '@/config';
 
 export interface ExportOptions {
     width: number;
@@ -13,7 +14,8 @@ export interface ExportOptions {
 }
 
 export async function exportVideo(options: ExportOptions): Promise<void> {
-    const { width, height, fps, format, duration, onProgress, getCanvas, seekToTime } = options;
+    const { width, height, fps, format, onProgress, getCanvas, seekToTime } = options;
+    const duration = DEMO_MODE ? Math.min(options.duration, DEMO_MAX_SECONDS) : options.duration;
     const totalFrames = Math.floor(duration * fps);
 
     onProgress?.(0, 'Initializing Encoder...');
