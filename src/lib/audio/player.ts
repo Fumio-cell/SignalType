@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/appStore';
+import { decodeAudioFile } from '@/lib/audio/decodeAudioFile';
 
 let audioContext: AudioContext | null = null;
 let sourceNode: AudioBufferSourceNode | null = null;
@@ -21,7 +22,7 @@ export async function loadAudio(file: File): Promise<void> {
     const url = URL.createObjectURL(file);
 
     try {
-        const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+        const decodedBuffer = await decodeAudioFile(ctx, arrayBuffer);
         currentBuffer = decodedBuffer;
 
         // Update store

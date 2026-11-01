@@ -51,7 +51,7 @@ export function AudioPlayerPanel() {
                 });
             }
         } catch (err) {
-            alert("Failed to load audio file");
+            alert(`Failed to decode audio file (${err instanceof Error ? err.message : String(err)})`);
         }
 
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -69,7 +69,7 @@ export function AudioPlayerPanel() {
             <div className="flex items-center gap-4">
                 <input
                     type="file"
-                    accept="audio/wav,audio/aiff,audio/mpeg"
+                    accept="audio/wav,audio/aiff,audio/x-aiff,audio/mpeg,.aif,.aiff,.aifc"
                     className="hidden"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
@@ -77,7 +77,7 @@ export function AudioPlayerPanel() {
                 <button
                     onClick={() => fileInputRef.current?.click()}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded flex items-center gap-2 text-sm font-medium transition-colors"
-                    title="Upload WAV file"
+                    title="Upload audio file"
                 >
                     <Upload className="w-4 h-4" />
                     <span>Upload Audio</span>

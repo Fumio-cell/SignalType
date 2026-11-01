@@ -7,6 +7,7 @@ import { PostFX } from './components/canvas/PostFX';
 import { useAppStore } from './store/appStore';
 import { loadCustomFont } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
+import { decodeAudioFile } from './lib/audio/decodeAudioFile';
 import { Header } from './components/ui/Header';
 
 function App() {
@@ -48,11 +49,11 @@ function App() {
                 }
             } else if (name.endsWith('.json')) {
                 importRecipe(file);
-            } else if (file.type.startsWith('audio/') || name.endsWith('.wav') || name.endsWith('.mp3')) {
+            } else if (file.type.startsWith('audio/') || name.endsWith('.wav') || name.endsWith('.mp3') || name.endsWith('.aif') || name.endsWith('.aiff') || name.endsWith('.aifc')) {
                 // Read and set audio
                 const arrayBuffer = await file.arrayBuffer();
                 const audioContext = new window.AudioContext();
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const audioBuffer = await decodeAudioFile(audioContext, arrayBuffer);
                 const url = URL.createObjectURL(file);
                 setAudio(audioBuffer, url);
             } else {
