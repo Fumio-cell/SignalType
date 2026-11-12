@@ -6,6 +6,12 @@ import * as THREE from 'three';
 import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
 
+// `columns` is a fraction of the UV range (0..1) in the postprocessing GlitchEffect;
+// the library default is 0.05. Values >= 0.5 make the shader's range test true for
+// every pixel and the whole frame collapses to a single remapped coordinate.
+const GLITCH_COLUMNS_MIN = 0.02;
+const GLITCH_COLUMNS_MAX = 0.12;
+
 export function PostFX() {
     const settings = useAppStore(state => state.settings.glitch);
     const features = useAudioFeatures();
@@ -40,6 +46,8 @@ export function PostFX() {
 
     // Dynamic slice calc
     const activeSlices = Math.max(1, Math.floor(settings.slices * (1 + features.blendedTurbulence)));
+    // Map slice count (about 1..40) onto a safe UV fraction: default 10 slices -> 0.05.
+    const glitchColumns = Math.min(GLITCH_COLUMNS_MAX, Math.max(GLITCH_COLUMNS_MIN, activeSlices * 0.005));
 
     // Frame stutter effect based on onset probability
     useFrame(() => {
@@ -66,7 +74,7 @@ export function PostFX() {
                 mode={GlitchMode.CONSTANT_MILD}
                 active={dynamicStrength > 0.05}
                 ratio={1 - (features.blendedOrder * 0.8)} // More order = less glitch ratio
-                columns={activeSlices * 5}
+                columns={glitchColumns}
             />
             <ChromaticAberration
                 blendFunction={BlendFunction.NORMAL}

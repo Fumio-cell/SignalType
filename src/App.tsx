@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ControlPanel } from './components/ui/ControlPanel';
 import { AudioPlayerPanel } from './components/ui/AudioPlayerPanel';
@@ -9,6 +9,7 @@ import { loadCustomFont } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
 import { decodeAudioFile } from './lib/audio/decodeAudioFile';
 import { Header } from './components/ui/Header';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
     const [isDragging, setIsDragging] = useState(false);
@@ -98,14 +99,18 @@ function App() {
                     </div>
 
                     <div className="flex-1 bg-zinc-950 relative">
-                        <Canvas
-                            shadows
-                            camera={{ position: [0, 0, 5], fov: 45 }}
-                            gl={{ preserveDrawingBuffer: true, antialias: false, alpha: true }}
-                        >
-                            <GlitchTextScene />
-                            <PostFX />
-                        </Canvas>
+                        <ErrorBoundary>
+                            <Canvas
+                                shadows
+                                camera={{ position: [0, 0, 5], fov: 45 }}
+                                gl={{ preserveDrawingBuffer: true, antialias: false, alpha: true }}
+                            >
+                                <Suspense fallback={null}>
+                                    <GlitchTextScene />
+                                    <PostFX />
+                                </Suspense>
+                            </Canvas>
+                        </ErrorBoundary>
                     </div>
                 </div>
 

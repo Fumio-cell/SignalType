@@ -6,7 +6,7 @@ export interface RenderSettings {
     customFontUrl: string | null; // Raw font URL for 2D text
     fontSize: number;
     bevelEnabled: boolean;
-    materialMode: 'standard' | 'metallic' | 'matcap';
+    materialMode: 'standard' | 'metallic';
     sequenceMode: boolean; // Enable audio-driven line sequence
     sequenceThreshold: number; // Onset sensitivity
     sequenceDuration: number; // How long text stays visible

@@ -184,7 +184,6 @@ export function ControlPanel() {
                             >
                                 <option value="standard">Standard</option>
                                 <option value="metallic">Metallic</option>
-                                <option value="matcap">MatCap (Stylized)</option>
                             </select>
                         </div>
                         <div className="space-y-1.5 flex flex-col pt-4 mt-4 border-t border-zinc-800/50">

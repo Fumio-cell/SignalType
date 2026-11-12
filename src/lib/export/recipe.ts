@@ -7,7 +7,7 @@ export interface AppRecipe {
         font: string;
         fontSize: number;
         bevelEnabled: boolean;
-        materialMode: 'standard' | 'metallic' | 'matcap';
+        materialMode: 'standard' | 'metallic';
         glitch: {
             intensityBase: number;
             stutterProb: number;
@@ -66,7 +66,7 @@ export function importRecipe(file: File) {
                 font: recipe.settings.font,
                 fontSize: recipe.settings.fontSize,
                 bevelEnabled: recipe.settings.bevelEnabled,
-                materialMode: recipe.settings.materialMode
+                materialMode: recipe.settings.materialMode === 'standard' ? 'standard' : 'metallic'
             });
 
             state.updateGlitchSettings(recipe.settings.glitch);

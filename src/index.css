@@ -1,16 +1,21 @@
 @import "tailwindcss";
+@import "@fontsource-variable/archivo/wght.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
 @theme {
     --color-background: hsl(0 0% 100%);
     --color-foreground: hsl(240 10% 3.9%);
     --color-border: hsl(240 5.9% 90%);
     --radius: 0.5rem;
+    --font-sans: 'Archivo Variable', system-ui, Helvetica, Arial, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 }
 
 @layer base {
     body {
         @apply bg-zinc-950 text-zinc-50 m-0 p-0 overflow-hidden;
-        font-family: 'Inter', 'FOT-Seurat Pro', 'Seurat Pro', 'Seurat', 'スーラ Pro', 'Hiragino Maru Gothic ProN', system-ui, Avenir, Helvetica, Arial, sans-serif;
+        font-family: 'Archivo Variable', system-ui, Helvetica, Arial, sans-serif;
     }
 }
 

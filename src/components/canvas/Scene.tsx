@@ -1,9 +1,14 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Text3D, Center, useMatcapTexture } from '@react-three/drei';
+import { Text, Text3D, Center } from '@react-three/drei';
 import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
 import * as THREE from 'three';
+import defaultFont2DUrl from '@/lib/fonts/ZenKakuGothicNew-Regular.ttf?url';
+
+// 2D text: without an explicit font troika downloads a default font from cdn.jsdelivr.net,
+// and for any glyph the font lacks it fetches resolver data from the same CDN.
+// Zen Kaku Gothic New is the bundled TTF that covers both Latin and Japanese, so it is the default.
 
 export function GlitchTextScene() {
     const render = useAppStore(state => state.settings.render);
@@ -12,9 +17,6 @@ export function GlitchTextScene() {
     const textRef = useRef<THREE.Mesh>(null);
     const features = useAudioFeatures();
     const glitch = useAppStore(state => state.settings.glitch);
-
-    // Use a stylized matcap for interesting reflections if selected
-    const [matcap] = useMatcapTexture("7877EE_D87FC5_75D9C7_1C78C0", 256);
 
     // Animate the text slightly based on time (independent of audio for base motion)
     // Also handle appearance/disappearance duration based on sequence beats
@@ -89,15 +91,13 @@ export function GlitchTextScene() {
 
     const materialContent = useMemo(() => {
         switch (render.materialMode) {
-            case 'matcap':
-                return <meshMatcapMaterial matcap={matcap} transparent={true} opacity={1} />;
             case 'metallic':
                 return <meshStandardMaterial color="#ffffff" metalness={0.8} roughness={0.2} transparent={true} opacity={1} />;
             case 'standard':
             default:
                 return <meshStandardMaterial color="#eeeeee" transparent={true} opacity={1} />;
         }
-    }, [render.materialMode, matcap]);
+    }, [render.materialMode]);
 
     return (
         <group>
@@ -109,7 +109,7 @@ export function GlitchTextScene() {
                 {render.textMode === '2D' ? (
                     <Text
                         ref={textRef as any}
-                        font={render.customFontUrl || undefined}
+                        font={render.customFontUrl || defaultFont2DUrl}
                         fontSize={render.fontSize}
                         anchorX="center"
                         anchorY="middle"
