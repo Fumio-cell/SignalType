@@ -22,11 +22,11 @@ interface AppStore extends AppState {
 const initialRender: RenderSettings = {
     text: 'GLITCH\nTEXT',
     textMode: '3D',
-    // Zen Kaku Gothic New: Latin and Japanese. initFonts() converts its glyphs for the 3D text.
+    // Zen Kaku Gothic New: Latin and Japanese. initFonts() converts the glyphs of the text.
     font: DEFAULT_FONT.url,
-    customFontData: null,
-    customFontUrl: DEFAULT_FONT.url,
-    json3D: false,
+    faces2D: null,
+    faces3D: null,
+    vertical: false,
     fontSize: 1.0,
     bevelEnabled: true,
     materialMode: 'metallic',

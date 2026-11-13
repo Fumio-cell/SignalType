@@ -4,8 +4,6 @@ import { useAppStore } from '@/store/appStore';
 import { exportRecipe, importRecipe } from '@/lib/export/recipe';
 import { importFontFile, selectPresetFont, useFontStatus } from '@/lib/fontLoader';
 import { DEFAULT_FONT, PRESET_FONTS } from '@/lib/fonts/presets';
-import { IS_PRO, BUY_URL } from '@/config';
-import { notify } from '@/lib/notify';
 
 export function ControlPanel() {
     const {
@@ -20,17 +18,6 @@ export function ControlPanel() {
     const fontBusy = useFontStatus(state => state.busy);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fontInputRef = useRef<HTMLInputElement>(null);
-
-    const handleGatedAction = (action: () => void, featureName: string) => {
-        if (!IS_PRO) {
-            notify(`${featureName} is part of the full version.`, {
-                id: 'pro-gate',
-                action: { label: 'Get the full version', href: BUY_URL },
-            });
-            return;
-        }
-        action();
-    };
 
     const handleRecipeImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -133,6 +120,18 @@ export function ControlPanel() {
                                 <option value="3D">3D Text (Glitchy, Extruded)</option>
                                 <option value="2D">2D Text (Flat, Sharp)</option>
                             </select>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <span id="l-vertical" className="control text-paper-dim">Vertical</span>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={settings.render.vertical}
+                                aria-labelledby="l-vertical"
+                                onClick={() => updateRenderSettings({ vertical: !settings.render.vertical })}
+                                className="switch"
+                            />
                         </div>
 
                         <div className="flex flex-col gap-sp1">
@@ -312,7 +311,7 @@ export function ControlPanel() {
                             <div className="flex flex-col gap-sp1">
                                 <div className="flex justify-between">
                                     <label htmlFor="f-rgb" className="control flex items-center gap-sp2 text-paper-dim">
-                                        RGB split spread {!IS_PRO && <span className="text-paper-label">PRO</span>}
+                                        RGB split spread
                                     </label>
                                     <output htmlFor="f-rgb" className="control text-paper-label">{settings.glitch.rgbSplit.toFixed(3)}</output>
                                 </div>
@@ -321,13 +320,7 @@ export function ControlPanel() {
                                     type="range" min="0" max="0.1" step="0.005"
                                     value={settings.glitch.rgbSplit}
                                     disabled={!settings.glitch.rgbSplitEnabled}
-                                    onChange={(e) => {
-                                        if (!IS_PRO && e.target.value !== "0.01") { // Simple threshold check
-                                            handleGatedAction(() => {}, "Advanced RGB split");
-                                            return;
-                                        }
-                                        updateGlitchSettings({ rgbSplit: parseFloat(e.target.value) });
-                                    }}
+                                    onChange={(e) => updateGlitchSettings({ rgbSplit: parseFloat(e.target.value) })}
                                 />
                             </div>
                         </div>

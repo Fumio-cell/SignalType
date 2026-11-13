@@ -5,11 +5,14 @@ import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
 import * as THREE from 'three';
 import { frameRandom, getExportTime, isExportActive } from '@/lib/export/frameClock';
-import defaultFont2DUrl from '@/lib/fonts/ZenKakuGothicNew-Regular.ttf?url';
+import { layoutHorizontal, layoutVertical, type Drawable, type Layout, type Lookup } from '@/lib/vertical/layout';
 
-// 2D text: without an explicit font troika downloads a default font from cdn.jsdelivr.net,
-// and for any glyph the font lacks it fetches resolver data from the same CDN.
-// Zen Kaku Gothic New is the bundled TTF that covers both Latin and Japanese, so it is the default.
+// 2D text: troika downloads fallback fonts from cdn.jsdelivr.net for any glyph its font lacks. Nothing
+// here ever hands it such a character: text is split between the chosen font and the bundled Zen Kaku
+// Gothic New (src/lib/fontLoader.ts decides which font has which character), and what neither has is left out.
+
+/** Text3D's size 1 is 1000 typeface units = 0.72 em, so one em is 100/72 of the size. */
+const EM_PER_SIZE_3D = 100 / 72;
 
 // drei's <Center cacheKey={centerKey}> measures its children only when its cacheKey changes. For 3D text the key has to
 // follow what shapes the outline: the converted glyph data, the drawn text, the size and the extrusion.
@@ -94,14 +97,16 @@ export function GlitchTextScene() {
         }
     });
 
-    // 3D text needs typeface JSON: the converted glyphs of the font, or the ready-made JSON font.
-    // Until the conversion has arrived 3D text draws nothing, rather than a failed font load.
-    const font3D = render.json3D ? render.font : render.customFontData;
+    // The faces this mode draws with: the chosen font and the one that stands in for what it lacks.
+    const is2D = render.textMode === '2D';
+    const faces = is2D ? render.faces2D : render.faces3D;
+    const primary = faces?.primary ?? null;
+    const fallback = faces?.fallback ?? null;
 
     // User Timing mark so a harness can tell when new font data reached the scene.
     useEffect(() => {
         performance.mark('font:committed');
-    }, [render.customFontData]);
+    }, [render.faces2D, render.faces3D]);
 
     const displayText = useMemo(() => {
         if (!render.sequenceMode || !render.text) return render.text;
@@ -114,20 +119,53 @@ export function GlitchTextScene() {
         return lines[safeIndex] || '';
     }, [render.text, render.sequenceMode, currentLineIndex]);
 
-    // Draw only characters the font data holds. The converted glyphs follow the text a moment after a
-    // keystroke and a font may lack some characters. Without this, three logs an error per missing
-    // character and per render, and troika (2D) fetches a fallback font from a CDN, which would send
-    // the characters off this machine. A ready-made JSON font in 3D is drawn as is.
-    const glyphs: Record<string, unknown> | undefined = render.customFontData?.glyphs;
-    const shownText = useMemo(() => {
-        if (render.textMode === '3D' && render.json3D) return displayText;
-        if (!glyphs) return '';
-        return Array.from(displayText).filter((ch) => ch === '\n' || ch in glyphs).join('');
-    }, [displayText, glyphs, render.textMode, render.json3D]);
+    // A character is drawn with the chosen font if the converted glyphs of that font hold it, else with
+    // the fallback font, else not at all. The converted glyphs follow the text a moment after a keystroke,
+    // and without this filter three logs an error per missing character and troika fetches a fallback
+    // font from a CDN, which would send the characters off this machine.
+    const lookup = useMemo<Lookup>(() => {
+        const own = primary?.data;
+        const other = fallback?.data;
+        return (ch: string): Drawable | null => {
+            if (own && ch in own.glyphs) return { slot: 'p', m: own.st.glyphs[ch] };
+            if (other && ch in other.glyphs) return { slot: 'f', m: other.st.glyphs[ch] };
+            return null;
+        };
+    }, [primary, fallback]);
 
-    const centerKey = render.textMode === '2D'
+    // One Text / Text3D for the whole text when it is horizontal and one font draws all of it (the
+    // plain case). Anything else is drawn piece by piece from a layout.
+    const needsFallback = useMemo(() => {
+        if (!primary || !fallback) return false;
+        return Array.from(displayText).some((ch) => ch !== '\n' && !(ch in primary.data.glyphs) && ch in fallback.data.glyphs);
+    }, [displayText, primary, fallback]);
+    const pieced = render.vertical || needsFallback;
+
+    const shownText = useMemo(() => {
+        if (!primary) return '';
+        return Array.from(displayText).filter((ch) => ch === '\n' || ch in primary.data.glyphs).join('');
+    }, [displayText, primary]);
+
+    const layout = useMemo<Layout | null>(() => {
+        if (!pieced || !primary) return null;
+        const lines = displayText.split('\n');
+        // A line break at the very end (the user is about to type the next line) is not a blank line yet.
+        while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+        const emC = { p: primary.data.st.emCenter, f: fallback?.data.st.emCenter ?? primary.data.st.emCenter };
+        const { pitch2D, pitch3D } = primary.data.st;
+        // Horizontal lines keep the pitch this mode already uses. Columns of vertical text use the larger of
+        // the two existing pitches, and never less than one em, so 2D and 3D set the same columns.
+        return render.vertical
+            ? layoutVertical(lines, lookup, emC, Math.max(1, pitch2D, pitch3D))
+            : layoutHorizontal(lines, lookup, emC, is2D ? pitch2D : pitch3D, is2D ? 'center' : 'left');
+    }, [pieced, primary, fallback, displayText, lookup, render.vertical, is2D]);
+
+    const centerKey = is2D
         ? 'flat'
-        : `${fontDataId(render.customFontData)}|${render.json3D}|${render.font}|${shownText}|${render.fontSize}|${render.bevelEnabled}`;
+        : `${fontDataId(primary?.data ?? null)}|${shownText}|${render.fontSize}|${render.bevelEnabled}`;
+
+    const extrusion = render.bevelEnabled ? 0.2 : 0.05;
+    const emWorld = is2D ? render.fontSize : render.fontSize * EM_PER_SIZE_3D;
 
     const materialContent = useMemo(() => {
         switch (render.materialMode) {
@@ -146,35 +184,81 @@ export function GlitchTextScene() {
             <spotLight position={[-10, 10, 10]} angle={0.3} penumbra={1} intensity={2} color="#4ade80" />
 
             <group ref={textRef}>
-                <Center cacheKey={centerKey}>
-                    {render.textMode === '2D' ? (
-                        <Text
-                            font={render.customFontUrl || defaultFont2DUrl}
-                            fontSize={render.fontSize}
-                            anchorX="center"
-                            anchorY="middle"
-                            textAlign="center"
-                        >
-                            {shownText}
-                            {materialContent}
-                        </Text>
-                    ) : font3D && (
-                        <Text3D
-                            font={font3D}
-                            size={render.fontSize}
-                            height={render.bevelEnabled ? 0.2 : 0.05}
-                            curveSegments={12}
-                            bevelEnabled={render.bevelEnabled}
-                            bevelThickness={0.02}
-                            bevelSize={0.02}
-                            bevelOffset={0}
-                            bevelSegments={5}
-                        >
-                            {shownText}
-                            {materialContent}
-                        </Text3D>
-                    )}
-                </Center>
+                {layout && primary ? (
+                    // The 3D block is centred in depth like <Center> does for plain text.
+                    <group position={[0, 0, is2D ? 0 : -extrusion / 2]}>
+                        {layout.pieces.map((p, i) => {
+                            const face = p.slot === 'p' ? primary : fallback;
+                            if (!face) return null;
+                            return (
+                                <group
+                                    key={`${i}|${p.slot}|${p.text}`}
+                                    position={[p.x * emWorld, p.y * emWorld, 0]}
+                                    rotation={[0, 0, p.rot]}
+                                    scale={[p.scale, p.scale, 1]}
+                                >
+                                    <group position={[p.ox * emWorld, p.oy * emWorld, 0]}>
+                                        {is2D ? (
+                                            <Text font={face.url} fontSize={emWorld} anchorX={0} anchorY="bottom-baseline">
+                                                {p.text}
+                                                {materialContent}
+                                            </Text>
+                                        ) : (
+                                            <Text3D
+                                                font={face.data as any}
+                                                size={render.fontSize}
+                                                height={extrusion}
+                                                curveSegments={12}
+                                                bevelEnabled={render.bevelEnabled}
+                                                bevelThickness={0.02}
+                                                bevelSize={0.02}
+                                                bevelOffset={0}
+                                                bevelSegments={5}
+                                            >
+                                                {p.text}
+                                                {materialContent}
+                                            </Text3D>
+                                        )}
+                                    </group>
+                                </group>
+                            );
+                        })}
+                    </group>
+                ) : (
+                    <Center cacheKey={centerKey} disable={is2D}>
+                        {is2D ? (
+                            primary && (
+                                <Text
+                                    font={primary.url}
+                                    fontSize={render.fontSize}
+                                    anchorX="center"
+                                    anchorY="middle"
+                                    textAlign="center"
+                                >
+                                    {shownText}
+                                    {materialContent}
+                                </Text>
+                            )
+                        ) : (
+                            primary && (
+                                <Text3D
+                                    font={primary.data as any}
+                                    size={render.fontSize}
+                                    height={extrusion}
+                                    curveSegments={12}
+                                    bevelEnabled={render.bevelEnabled}
+                                    bevelThickness={0.02}
+                                    bevelSize={0.02}
+                                    bevelOffset={0}
+                                    bevelSegments={5}
+                                >
+                                    {shownText}
+                                    {materialContent}
+                                </Text3D>
+                            )
+                        )}
+                    </Center>
+                )}
             </group>
         </group>
     );

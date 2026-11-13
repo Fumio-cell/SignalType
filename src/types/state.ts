@@ -1,10 +1,28 @@
+import type { TypefaceData } from '@/lib/fonts/subset';
+
+/** A font as the stage uses it: its file URL (2D text) and the typeface JSON of the converted characters (3D text and layout). */
+export interface Face {
+    /** URL of the font file that troika loads, or '' for a font that exists only as typeface JSON. */
+    url: string;
+    data: TypefaceData;
+}
+
+/**
+ * The chosen font and the font that stands in for the characters it lacks. A character belongs to
+ * `primary` when its code point is in primary.data.glyphs, else to `fallback`, else it is not drawn.
+ */
+export interface FacePair {
+    primary: Face;
+    fallback: Face | null;
+}
+
 export interface RenderSettings {
     text: string;
     textMode: '3D' | '2D';
     font: string; // URL or name
-    customFontData: any | null; // Typeface JSON holding only the glyphs of the current text (src/lib/fontLoader.ts)
-    customFontUrl: string | null; // Font file URL for 2D text
-    json3D: boolean; // 3D text uses the ready-made typeface JSON in `font` (Inter Bold) instead of customFontData
+    faces2D: FacePair | null; // How 2D text is drawn; set by src/lib/fontLoader.ts
+    faces3D: FacePair | null; // How 3D text is drawn (differs from 2D only for a typeface-JSON preset)
+    vertical: boolean; // Vertical writing: one character per cell from top to bottom, lines from right to left
     fontSize: number;
     bevelEnabled: boolean;
     materialMode: 'standard' | 'metallic';
