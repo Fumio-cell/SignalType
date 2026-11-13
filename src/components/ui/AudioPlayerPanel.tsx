@@ -4,9 +4,10 @@ import { useAppStore } from '@/store/appStore';
 import { cn } from '@/lib/utils';
 import { loadAudio, startPlayback, stopPlayback, getCurrentTime } from '@/lib/audio/player';
 import { ExportPanel } from '@/components/ui/ExportPanel';
+import { notify } from '@/lib/notify';
 
 export function AudioPlayerPanel() {
-    const { isPlaying, setPlaying, audioUrl, duration, currentTime, setCurrentTime } = useAppStore();
+    const { isPlaying, setPlaying, audioUrl, duration, currentTime, setCurrentTime, audioBuffer } = useAppStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const timeReqRef = useRef<number>(0);
     const isScrubbingRef = useRef<boolean>(false);
@@ -51,7 +52,7 @@ export function AudioPlayerPanel() {
                 });
             }
         } catch (err) {
-            alert(`Failed to decode audio file (${err instanceof Error ? err.message : String(err)})`);
+            notify(`Failed to decode audio file (${err instanceof Error ? err.message : String(err)})`, { id: 'audio-decode', tone: 'error' });
         }
 
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -64,43 +65,50 @@ export function AudioPlayerPanel() {
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     };
 
+    const hasAudio = duration > 0;
+
     return (
-        <div className="h-16 bg-zinc-950 border-t border-zinc-800 flex items-center px-4 justify-between z-10 shrink-0">
-            <div className="flex items-center gap-4">
+        <footer className="z-10 flex h-16 shrink-0 items-center justify-between border-t border-line bg-ink px-sp4">
+            <div className="flex items-center gap-sp4">
                 <input
                     type="file"
                     accept="audio/wav,audio/aiff,audio/x-aiff,audio/mpeg,.aif,.aiff,.aifc"
                     className="hidden"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
+                    aria-label="Audio file"
+                    tabIndex={-1}
                 />
                 <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded flex items-center gap-2 text-sm font-medium transition-colors"
+                    className={hasAudio ? 'btn' : 'btn-fill'}
                     title="Upload audio file"
                 >
-                    <Upload className="w-4 h-4" />
+                    <Upload className="h-4 w-4" aria-hidden="true" />
                     <span>Upload Audio</span>
                 </button>
 
                 {audioUrl && (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-sp4">
                         <button
+                            type="button"
                             onClick={() => setPlaying(!isPlaying)}
-                            className={cn(
-                                "w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-sm",
-                                isPlaying ? "bg-rose-500 text-white hover:bg-rose-600" : "bg-emerald-500 text-white hover:bg-emerald-600"
-                            )}
+                            className="btn btn-icon h-10 w-10"
+                            aria-label={isPlaying ? 'Stop' : 'Play'}
                         >
-                            {isPlaying ? <Square className="w-4 h-4" fill="currentColor" /> : <Play className="w-4 h-4 ml-1" fill="currentColor" />}
+                            {isPlaying ? <Square className="h-4 w-4" fill="currentColor" aria-hidden="true" /> : <Play className="h-4 w-4" fill="currentColor" aria-hidden="true" />}
                         </button>
-                        <div className="flex flex-col w-64 md:w-96 ml-2 gap-1.5">
-                            <div className="flex justify-between items-center text-[10px] text-emerald-400 font-mono px-1">
-                                <span>{formatTime(currentTime)}</span>
-                                <span className="text-zinc-500">{formatTime(duration)}</span>
+                        <div className="ml-sp2 flex w-64 flex-col gap-sp1 md:w-96">
+                            <div className="control flex justify-between px-sp1">
+                                <span className="text-paper">{formatTime(currentTime)}</span>
+                                <span className="text-paper-label">{formatTime(duration)}</span>
                             </div>
                             <input
                                 type="range"
+                                className="playhead"
+                                aria-label="Playback position"
+                                aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
                                 min={0}
                                 max={duration || 100}
                                 step={0.01}
@@ -118,21 +126,20 @@ export function AudioPlayerPanel() {
                                         startPlayback(useAppStore.getState().currentTime);
                                     }
                                 }}
-                                className="w-full h-1.5 bg-zinc-800 rounded-full appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400"
                             />
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="flex items-center gap-4">
-                <div className="text-xs text-zinc-500 font-mono flex items-center gap-2 mr-4">
-                    <span>Worker: {useAppStore.getState().audioBuffer ? 'Ready' : 'Idle'}</span>
-                    <div className={cn("w-2 h-2 rounded-full", useAppStore.getState().audioBuffer ? "bg-emerald-500" : "bg-zinc-700")}></div>
+            <div className="flex items-center gap-sp4">
+                <div className="control mr-sp4 flex items-center gap-sp2 text-paper-label">
+                    <span>Worker: {audioBuffer ? 'Ready' : 'Idle'}</span>
+                    <div className={cn('h-2 w-2', audioBuffer ? 'bg-paper' : 'bg-line-control')} aria-hidden="true"></div>
                 </div>
 
                 <ExportPanel />
             </div>
-        </div>
+        </footer>
     );
 }

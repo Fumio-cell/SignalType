@@ -3,6 +3,7 @@ import { Download, Loader2, Zap } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportVideo } from '@/lib/export/exportVideo';
 import { DEMO_MODE, DEMO_MAX_SECONDS, IS_PRO, BUY_URL } from '@/config';
+import { notify } from '@/lib/notify';
 
 export function ExportPanel() {
     const { duration } = useAppStore();
@@ -15,9 +16,10 @@ export function ExportPanel() {
 
     const handleGatedAction = (action: () => Promise<void>) => {
         if (!IS_PRO) {
-            if (confirm('Exporting in 4K resolution is a PRO feature. Would you like to upgrade?')) {
-                window.open(BUY_URL, '_blank', 'noopener,noreferrer');
-            }
+            notify('4K export is part of the full version.', {
+                id: 'pro-gate',
+                action: { label: 'Get the full version', href: BUY_URL },
+            });
             return;
         }
         action();
@@ -25,7 +27,7 @@ export function ExportPanel() {
 
     const handleExport = async () => {
         if (duration <= 0) {
-            alert("Please load an audio file first");
+            notify("Load an audio file first.", { id: 'no-audio' });
             return;
         }
 
@@ -58,7 +60,7 @@ export function ExportPanel() {
                 if (DEMO_MODE) setDemoLimited(true);
             } catch (err: any) {
                 console.error(err);
-                alert(`Export failed: ${err.message}`);
+                notify(`Export failed: ${err.message}`, { id: 'export-failed', tone: 'error' });
             } finally {
                 setIsExporting(false);
                 setProgress(0);
@@ -74,60 +76,68 @@ export function ExportPanel() {
         }
     };
 
+    const hasAudio = duration > 0;
+    const gated4K = resolution === '4K' && !IS_PRO;
+
     return (
-        <div className="flex items-center gap-3">
-            <div className="relative">
-                <select
-                    value={resolution}
-                    onChange={(e) => setResolution(e.target.value as any)}
-                    className={`bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-zinc-600 disabled:opacity-50 ${resolution === '4K' && !IS_PRO ? 'text-amber-500 font-bold' : ''}`}
-                    disabled={isExporting}
-                >
-                    <option value="1080p">1080p (FHD)</option>
-                    <option value="4K">4K (Max 15s) {!IS_PRO ? '🔒' : ''}</option>
-                </select>
-            </div>
+        <div className="flex items-center gap-sp3">
+            <select
+                aria-label="Resolution"
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value as any)}
+                className="field !w-auto !py-sp1"
+                disabled={isExporting}
+            >
+                <option value="1080p">1080p (FHD)</option>
+                <option value="4K">{`4K (max 15s)${!IS_PRO ? ' - PRO' : ''}`}</option>
+            </select>
 
             <select
+                aria-label="Format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value as any)}
-                className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-zinc-600 disabled:opacity-50"
+                className="field !w-auto !py-sp1"
                 disabled={isExporting}
             >
                 <option value="mp4">.MP4</option>
-                <option value="zip">.ZIP (PNG Seq - 透過対応)</option>
+                <option value="zip">.ZIP (PNG sequence, alpha)</option>
             </select>
 
             {isExporting ? (
-                <div className="flex items-center gap-3 bg-zinc-900 px-4 py-1.5 rounded border border-zinc-800 w-48 max-w-full">
-                    <Loader2 className="w-4 h-4 text-emerald-500 animate-spin shrink-0" />
-                    <div className="flex-1 flex flex-col gap-1">
-                        <div className="flex justify-between text-[10px] text-zinc-400 font-mono">
-                            <span className="truncate w-24">{statusText}</span>
+                <div className="flex w-56 max-w-full items-center gap-sp3 border border-line-control bg-ink-panel px-sp3 py-sp1">
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-paper" aria-hidden="true" />
+                    <div className="flex flex-1 flex-col gap-sp1">
+                        <div className="control flex justify-between text-paper-dim">
+                            <span className="w-24 truncate">{statusText}</span>
                             <span>{Math.round(progress * 100)}%</span>
                         </div>
-                        <div className="w-full bg-zinc-800 h-1 rounded-full overflow-hidden">
-                            <div
-                                className="bg-emerald-500 h-full transition-all duration-200"
-                                style={{ width: `${progress * 100}%` }}
-                            />
+                        <div
+                            role="progressbar"
+                            aria-label="Export progress"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={Math.round(progress * 100)}
+                            className="h-[2px] w-full bg-line-control"
+                        >
+                            <div className="h-full bg-paper" style={{ width: `${progress * 100}%` }} />
                         </div>
                     </div>
                 </div>
             ) : (
                 <button
+                    type="button"
                     onClick={handleExport}
-                    className={`px-4 py-1.5 rounded flex items-center gap-2 text-sm font-medium transition-colors ${resolution === '4K' && !IS_PRO ? 'bg-amber-600 hover:bg-amber-500' : 'bg-zinc-800 hover:bg-zinc-700'}`}
+                    className={hasAudio ? 'btn-fill' : 'btn'}
                 >
-                    {resolution === '4K' && !IS_PRO ? <Zap className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                    {resolution === '4K' && !IS_PRO ? 'Get PRO to Export 4K' : DEMO_MODE ? 'Export (10s preview)' : 'Export'}
+                    {gated4K ? <Zap className="h-4 w-4" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
+                    {gated4K ? 'Get PRO to Export 4K' : DEMO_MODE ? 'Export (10s preview)' : 'Export'}
                 </button>
             )}
 
             {DEMO_MODE && demoLimited && (
-                <p className="text-[11px] leading-snug text-amber-300/90">
+                <p className="m-0 text-[11px] leading-snug text-paper-dim">
                     Demo export is limited to {DEMO_MAX_SECONDS} seconds.{' '}
-                    <a href={BUY_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline text-amber-200">Get the full version</a>
+                    <a href={BUY_URL} target="_blank" rel="noopener noreferrer" className="text-paper underline underline-offset-2">Get the full version</a>
                 </p>
             )}
         </div>

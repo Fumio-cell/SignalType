@@ -46,7 +46,8 @@ export function PostFX() {
 
     // Dynamic slice calc
     const activeSlices = Math.max(1, Math.floor(settings.slices * (1 + features.blendedTurbulence)));
-    // Map slice count (about 1..40) onto a safe UV fraction: default 10 slices -> 0.05.
+    // Map slice count (about 1..40) onto a safe UV fraction. At the default turbulence the
+    // 10 base slices become 12 active slices, which gives 0.06.
     const glitchColumns = Math.min(GLITCH_COLUMNS_MAX, Math.max(GLITCH_COLUMNS_MIN, activeSlices * 0.005));
 
     // Frame stutter effect based on onset probability

@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/appStore';
+import { notify } from '@/lib/notify';
 
 export interface AppRecipe {
     version: string;
@@ -75,7 +76,7 @@ export function importRecipe(file: File) {
 
         } catch (err) {
             console.error("Failed to parse recipe file", err);
-            alert("Invalid recipe file format.");
+            notify("Invalid recipe file format.", { id: 'recipe-invalid', tone: 'error' });
         }
     };
     reader.readAsText(file);

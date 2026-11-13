@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.error) {
             return (
-                <div role="alert" className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-zinc-300">
+                <div role="alert" className="absolute inset-0 flex items-center justify-center p-sp6 text-center text-sm text-paper-dim">
                     The stage could not start. Reload the page to try again.
                 </div>
             );
