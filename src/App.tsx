@@ -4,17 +4,20 @@ import { ControlPanel } from './components/ui/ControlPanel';
 import { AudioPlayerPanel } from './components/ui/AudioPlayerPanel';
 import { GlitchTextScene } from './components/canvas/Scene';
 import { PostFX } from './components/canvas/PostFX';
+import { ExportBridge } from './components/canvas/ExportBridge';
 import { useAppStore } from './store/appStore';
 import { loadCustomFont } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
 import { decodeAudioFile } from './lib/audio/decodeAudioFile';
 import { Header } from './components/ui/Header';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useExportMode } from './lib/export/stage';
 import { NoticeHost } from './components/NoticeHost';
 import { notify } from './lib/notify';
 
 function App() {
     const [isDragging, setIsDragging] = useState(false);
+    const exporting = useExportMode(state => state.active);
     const setAudio = useAppStore(state => state.setAudio);
     const updateRenderSettings = useAppStore(state => state.updateRenderSettings);
 
@@ -93,20 +96,23 @@ function App() {
 
             <main className="flex flex-1 overflow-hidden">
                 {/* Stage */}
-                <div className="relative flex flex-1 flex-col border-r border-line">
+                <div className="relative flex min-w-0 flex-1 flex-col border-r border-line">
                     <div className="control pointer-events-none absolute left-sp3 top-sp3 z-10 select-none border border-line bg-ink-panel px-sp2 py-sp1 text-paper-label">
                         SignalType v2.1
                     </div>
 
-                    <div className="relative flex-1 bg-ink-stage">
+                    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-ink-stage">
                         <ErrorBoundary>
                             <Canvas
+                                frameloop={exporting ? 'never' : 'always'}
+                                dpr={exporting ? 1 : [1, 2]}
                                 camera={{ position: [0, 0, 5], fov: 45 }}
                                 gl={{ preserveDrawingBuffer: true, antialias: false, alpha: true }}
                             >
                                 <Suspense fallback={null}>
                                     <GlitchTextScene />
                                     <PostFX />
+                                    <ExportBridge />
                                 </Suspense>
                             </Canvas>
                         </ErrorBoundary>

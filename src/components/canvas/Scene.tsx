@@ -4,6 +4,7 @@ import { Text, Text3D, Center } from '@react-three/drei';
 import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
 import * as THREE from 'three';
+import { frameRandom, getExportTime, isExportActive } from '@/lib/export/frameClock';
 import defaultFont2DUrl from '@/lib/fonts/ZenKakuGothicNew-Regular.ttf?url';
 
 // 2D text: without an explicit font troika downloads a default font from cdn.jsdelivr.net,
@@ -22,11 +23,12 @@ export function GlitchTextScene() {
     // Also handle appearance/disappearance duration based on sequence beats
     useFrame((state) => {
         if (textRef.current) {
-            const t = state.clock.getElapsedTime();
+            // Export: time comes from the frame number; preview: wall clock.
+            const t = isExportActive() ? getExportTime() : state.clock.getElapsedTime();
 
             // Calculate random vertical shake based on setting and audio onset
             const shakeAmt = glitch.verticalShake * (1.0 + features.onset * 2.0);
-            const shakeY = (Math.random() - 0.5) * shakeAmt;
+            const shakeY = (frameRandom() - 0.5) * shakeAmt;
 
             // Subtle floating + shake, controlled by baseFloat
             textRef.current.position.y = (Math.sin(t * 1.5) * glitch.baseFloat) + shakeY;

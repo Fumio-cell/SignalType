@@ -1,10 +1,12 @@
-import { useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { EffectComposer, Glitch, Noise, ChromaticAberration } from '@react-three/postprocessing';
 import { BlendFunction, GlitchMode } from 'postprocessing';
 import * as THREE from 'three';
 import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
+import { mulberry32 } from '@/lib/export/frameClock';
+import { registerComposer, type ResizableComposer } from '@/lib/export/stage';
 
 // `columns` is a fraction of the UV range (0..1) in the postprocessing GlitchEffect;
 // the library default is 0.05. Values >= 0.5 make the shader's range test true for
@@ -12,7 +14,24 @@ import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
 const GLITCH_COLUMNS_MIN = 0.02;
 const GLITCH_COLUMNS_MAX = 0.12;
 
+// The library fills the glitch displacement map with Math.random() every time the effect is
+// built. Build it here once from a fixed seed so the look does not depend on when React
+// happens to render (needed for reproducible exports).
+const PERTURBATION_SIZE = 64;
+function createPerturbationMap(): THREE.DataTexture {
+    const rng = mulberry32(0x51674e11);
+    const data = new Uint8Array(PERTURBATION_SIZE * PERTURBATION_SIZE * 4);
+    for (let i = 0; i < data.length; i++) data[i] = rng() * 255 + 0.5;
+    const map = new THREE.DataTexture(data, PERTURBATION_SIZE, PERTURBATION_SIZE, THREE.RGBAFormat, THREE.UnsignedByteType);
+    map.needsUpdate = true;
+    return map;
+}
+
 export function PostFX() {
+    const perturbationMap = useMemo(createPerturbationMap, []);
+    // Let the export resize the composer's buffers (see ExportBridge).
+    const composerRef = useCallback((c: ResizableComposer | null) => registerComposer(c), []);
+    useEffect(() => () => perturbationMap.dispose(), [perturbationMap]);
     const settings = useAppStore(state => state.settings.glitch);
     const features = useAudioFeatures();
 
@@ -66,7 +85,7 @@ export function PostFX() {
     });
 
     return (
-        <EffectComposer autoClear={false}>
+        <EffectComposer ref={composerRef as any} autoClear={false}>
             <Glitch
                 ref={glitchRef}
                 delay={new THREE.Vector2(0.5, 1.5)} // min/max delay (Ignored in CONSTANT_MILD)
@@ -76,6 +95,7 @@ export function PostFX() {
                 active={dynamicStrength > 0.05}
                 ratio={1 - (features.blendedOrder * 0.8)} // More order = less glitch ratio
                 columns={glitchColumns}
+                perturbationMap={perturbationMap}
             />
             <ChromaticAberration
                 blendFunction={BlendFunction.NORMAL}

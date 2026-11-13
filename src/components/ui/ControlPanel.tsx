@@ -245,7 +245,7 @@ export function ControlPanel() {
                                     </button>
                                 )}
                             </div>
-                            <div className="mt-sp1 truncate text-[11px] text-paper-label">
+                            <div className="note mt-sp1 truncate">
                                 {settings.render.customFontData
                                     ? `Typeface active (${PRESET_FONTS.find(p => p.url === settings.render.font)?.label || settings.render.font})`
                                     : 'Internal JSON font active'}
@@ -278,7 +278,7 @@ export function ControlPanel() {
                                     onChange={(e) => updateRenderSettings({ sequenceDuration: parseFloat(e.target.value) })}
                                     disabled={!settings.render.sequenceMode}
                                 />
-                                <p className="m-0 text-[11px] leading-snug text-paper-label">
+                                <p className="note m-0">
                                     Displays each line for this duration, fading out in the last 20%. Audio dynamics only affect Glitch effects.
                                 </p>
                             </div>

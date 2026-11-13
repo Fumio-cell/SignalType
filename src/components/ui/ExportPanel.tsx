@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Download, Loader2, Zap } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
-import { exportVideo } from '@/lib/export/exportVideo';
-import { DEMO_MODE, DEMO_MAX_SECONDS, IS_PRO, BUY_URL } from '@/config';
+import { exportVideo, ExportUnsupportedError } from '@/lib/export/exportVideo';
+import { getExportStage } from '@/lib/export/stage';
+import { DEMO_MODE, DEMO_MAX_SECONDS, BUY_URL } from '@/config';
 import { notify } from '@/lib/notify';
 
 export function ExportPanel() {
@@ -13,17 +14,6 @@ export function ExportPanel() {
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
     const [demoLimited, setDemoLimited] = useState(false);
-
-    const handleGatedAction = (action: () => Promise<void>) => {
-        if (!IS_PRO) {
-            notify('4K export is part of the full version.', {
-                id: 'pro-gate',
-                action: { label: 'Get the full version', href: BUY_URL },
-            });
-            return;
-        }
-        action();
-    };
 
     const handleExport = async () => {
         if (duration <= 0) {
@@ -37,7 +27,15 @@ export function ExportPanel() {
             setStatusText('Preparing...');
 
             try {
-                const getCanvas = () => document.querySelector('canvas');
+                // The audio features arrive from a worker. Starting before they do would make
+                // the first frames differ from run to run, so wait (bounded) for them.
+                setStatusText('Analyzing audio...');
+                const t0 = Date.now();
+                while (useAppStore.getState().onsetStrength === null && Date.now() - t0 < 20000) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                const stage = getExportStage();
+                if (!stage) throw new Error('The stage is not ready yet.');
                 const width = resolution === '4K' ? 3840 : 1920;
                 const height = resolution === '4K' ? 2160 : 1080;
 
@@ -46,21 +44,22 @@ export function ExportPanel() {
                     height,
                     fps: 30,
                     format,
-                    duration: Math.min(duration, resolution === '4K' ? 15 : duration),
-                    getCanvas,
-                    seekToTime: async (time) => {
-                        useAppStore.getState().setCurrentTime(time);
-                        await new Promise(r => setTimeout(r, 16));
-                    },
+                    duration,
+                    stage,
                     onProgress: (p, status) => {
                         setProgress(p);
                         setStatusText(status);
                     }
                 });
-                if (DEMO_MODE) setDemoLimited(true);
+                // Only say so when the length limit actually cut the file.
+                if (DEMO_MODE && duration > DEMO_MAX_SECONDS) setDemoLimited(true);
             } catch (err: any) {
                 console.error(err);
-                notify(`Export failed: ${err.message}`, { id: 'export-failed', tone: 'error' });
+                if (err instanceof ExportUnsupportedError) {
+                    notify(err.message, { id: 'export-unsupported', tone: 'error' });
+                } else {
+                    notify(`Export failed: ${err.message}`, { id: 'export-failed', tone: 'error' });
+                }
             } finally {
                 setIsExporting(false);
                 setProgress(0);
@@ -69,15 +68,10 @@ export function ExportPanel() {
             }
         };
 
-        if (resolution === '4K') {
-            handleGatedAction(runExport);
-        } else {
-            await runExport();
-        }
+        await runExport();
     };
 
     const hasAudio = duration > 0;
-    const gated4K = resolution === '4K' && !IS_PRO;
 
     return (
         <div className="flex items-center gap-sp3">
@@ -89,7 +83,7 @@ export function ExportPanel() {
                 disabled={isExporting}
             >
                 <option value="1080p">1080p (FHD)</option>
-                <option value="4K">{`4K (max 15s)${!IS_PRO ? ' - PRO' : ''}`}</option>
+                <option value="4K">4K (UHD)</option>
             </select>
 
             <select
@@ -129,8 +123,8 @@ export function ExportPanel() {
                     onClick={handleExport}
                     className={hasAudio ? 'btn-fill' : 'btn'}
                 >
-                    {gated4K ? <Zap className="h-4 w-4" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-                    {gated4K ? 'Get PRO to Export 4K' : DEMO_MODE ? 'Export (10s preview)' : 'Export'}
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    {DEMO_MODE ? 'Export (10s preview)' : 'Export'}
                 </button>
             )}
 
