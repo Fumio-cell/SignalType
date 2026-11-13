@@ -16,7 +16,15 @@ export interface FacePair {
     fallback: Face | null;
 }
 
+export type PresetId = 'weight' | 'ink' | 'interference';
+
 export interface RenderSettings {
+    /** The look the user chose last (src/lib/look/presets.ts). Weight is the opening state. */
+    preset: PresetId;
+    /** Ink bleed: 0 = off, up to 1. How far a stroke swells and how close strokes join (the INK pass). */
+    ink: number;
+    /** Distance between the column centres of vertical text, in em. */
+    columnPitch: number;
     text: string;
     textMode: '3D' | '2D';
     font: string; // URL or name

@@ -10,6 +10,10 @@ export interface AppRecipe {
         /** A bundled font by its menu label, or the file name of a font the user imported. */
         font: string;
         vertical?: boolean;
+        /** The look last chosen, ink bleed and column pitch (recipes from before ST-6 have none of these). */
+        preset?: 'weight' | 'ink' | 'interference';
+        ink?: number;
+        columnPitch?: number;
         fontSize: number;
         bevelEnabled: boolean;
         materialMode: 'standard' | 'metallic';
@@ -54,6 +58,9 @@ export function exportRecipe() {
             text: state.settings.render.text,
             font: preset ? preset.label : font,
             vertical: state.settings.render.vertical,
+            preset: state.settings.render.preset,
+            ink: state.settings.render.ink,
+            columnPitch: state.settings.render.columnPitch,
             fontSize: state.settings.render.fontSize,
             bevelEnabled: state.settings.render.bevelEnabled,
             materialMode: state.settings.render.materialMode,
@@ -87,6 +94,9 @@ export function importRecipe(file: File) {
             state.updateRenderSettings({
                 text: recipe.settings.text,
                 ...(typeof recipe.settings.vertical === 'boolean' ? { vertical: recipe.settings.vertical } : {}),
+                ...(recipe.settings.preset ? { preset: recipe.settings.preset } : {}),
+                ...(typeof recipe.settings.ink === 'number' ? { ink: recipe.settings.ink } : {}),
+                ...(typeof recipe.settings.columnPitch === 'number' ? { columnPitch: recipe.settings.columnPitch } : {}),
                 fontSize: recipe.settings.fontSize,
                 bevelEnabled: recipe.settings.bevelEnabled,
                 materialMode: recipe.settings.materialMode === 'standard' ? 'standard' : 'metallic'

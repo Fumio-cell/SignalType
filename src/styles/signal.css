@@ -1,7 +1,7 @@
 /*
  * SIGNAL: the only source of colour, type and spacing tokens in the UI.
- * Colour literals live in this file and nowhere else in src/
- * (the only exceptions are the three stage material/light colours in Scene.tsx).
+ * Colour literals live in this file and nowhere else in src/. Code that needs a colour (the stage
+ * material) reads a token from here through src/lib/tokens.ts.
  */
 
 :root {
@@ -197,6 +197,42 @@
     .btn-fill:active {
         background: var(--acid-press);
         border-color: var(--acid-press);
+    }
+
+    /*
+     * A look chip (a verb of the tool). Never filled with acid: the filled acid is the one main action.
+     * Chosen = the ground changes from ink to ink-panel, the border turns paper, the label is underlined
+     * and set in acid. It does not rely on colour alone.
+     */
+    .chip {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: var(--space-2) var(--space-3);
+        background: var(--ink);
+        color: var(--paper-dim);
+        border: var(--rule-hair) solid var(--line-control);
+        border-radius: var(--radius-none);
+        cursor: pointer;
+        text-align: left;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 11px;
+        line-height: 1.3;
+        transition: border-color var(--t-state) var(--ease), color var(--t-state) var(--ease);
+    }
+    .chip:hover {
+        border-color: var(--paper);
+    }
+    .chip[aria-pressed='true'] {
+        background: var(--ink-panel);
+        color: var(--acid);
+        border-color: var(--paper);
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 4px;
     }
 
     .field {

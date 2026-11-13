@@ -25,3 +25,6 @@ export const PRESET_FONTS: PresetFont[] = [
 
 /** Covers Latin and Japanese, so 3D and 2D both draw any text the user types. */
 export const DEFAULT_FONT: PresetFont = PRESET_FONTS.find((p) => p.url === zenKakuUrl)!;
+
+/** The default typeface of the INK look. */
+export const INK_FONT: PresetFont = PRESET_FONTS.find((p) => p.url === shipporiMinchoUrl)!;

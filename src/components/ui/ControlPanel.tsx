@@ -1,9 +1,12 @@
 import React, { useRef } from 'react';
-import { Settings2, Upload, Download, Type, Zap, AudioLines, FileText, X } from 'lucide-react';
+import { Settings2, Upload, Download, Type, Zap, AudioLines, FileText, X, Layers } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportRecipe, importRecipe } from '@/lib/export/recipe';
 import { importFontFile, selectPresetFont, useFontStatus } from '@/lib/fontLoader';
 import { DEFAULT_FONT, PRESET_FONTS } from '@/lib/fonts/presets';
+import { applyPreset, LOOK_PRESETS } from '@/lib/look/presets';
+import { RGB_SPLIT_MAX } from '@/lib/look/limits';
+import { MAX_COLUMN_PITCH, MIN_COLUMN_PITCH } from '@/lib/vertical/layout';
 
 export function ControlPanel() {
     const {
@@ -78,6 +81,43 @@ export function ControlPanel() {
 
             <div className="flex flex-col gap-sp5 p-sp4">
 
+                {/* Looks: the verbs. */}
+                <section aria-labelledby="sec-look" className="flex flex-col gap-sp3">
+                    <h3 id="sec-look" className="control m-0 flex items-center gap-sp2 text-paper-dim">
+                        <Layers className="h-4 w-4" aria-hidden="true" />
+                        Look
+                    </h3>
+                    <div role="group" aria-labelledby="sec-look" className="flex flex-col gap-sp2">
+                        {LOOK_PRESETS.map((p) => (
+                            <button
+                                key={p.id}
+                                type="button"
+                                className="chip"
+                                aria-pressed={settings.render.preset === p.id}
+                                onClick={() => applyPreset(p.id)}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="note m-0">{LOOK_PRESETS.find((p) => p.id === settings.render.preset)?.note}</p>
+
+                    <div className="flex flex-col gap-sp1">
+                        <div className="flex justify-between">
+                            <label htmlFor="f-ink" className="control text-paper-dim">Ink bleed</label>
+                            <output htmlFor="f-ink" className="control text-paper-label">{settings.render.ink.toFixed(2)}</output>
+                        </div>
+                        <input
+                            id="f-ink"
+                            type="range" min="0" max="1" step="0.01"
+                            value={settings.render.ink}
+                            onChange={(e) => updateRenderSettings({ ink: parseFloat(e.target.value) })}
+                        />
+                    </div>
+                </section>
+
+                <div className="rule" />
+
                 {/* Text Settings */}
                 <section aria-labelledby="sec-text" className="flex flex-col gap-sp3">
                     <h3 id="sec-text" className="control m-0 flex items-center gap-sp2 text-paper-dim">
@@ -131,6 +171,20 @@ export function ControlPanel() {
                                 aria-labelledby="l-vertical"
                                 onClick={() => updateRenderSettings({ vertical: !settings.render.vertical })}
                                 className="switch"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-sp1">
+                            <div className="flex justify-between">
+                                <label htmlFor="f-pitch" className="control text-paper-dim">Column pitch</label>
+                                <output htmlFor="f-pitch" className="control text-paper-label">{settings.render.columnPitch.toFixed(2)} em</output>
+                            </div>
+                            <input
+                                id="f-pitch"
+                                type="range" min={MIN_COLUMN_PITCH} max={MAX_COLUMN_PITCH} step="0.01"
+                                value={settings.render.columnPitch}
+                                disabled={!settings.render.vertical}
+                                onChange={(e) => updateRenderSettings({ columnPitch: parseFloat(e.target.value) })}
                             />
                         </div>
 
@@ -313,12 +367,12 @@ export function ControlPanel() {
                                     <label htmlFor="f-rgb" className="control flex items-center gap-sp2 text-paper-dim">
                                         RGB split spread
                                     </label>
-                                    <output htmlFor="f-rgb" className="control text-paper-label">{settings.glitch.rgbSplit.toFixed(3)}</output>
+                                    <output htmlFor="f-rgb" className="control text-paper-label">{(Math.min(settings.glitch.rgbSplit, RGB_SPLIT_MAX) * 1920).toFixed(1)} px</output>
                                 </div>
                                 <input
                                     id="f-rgb"
-                                    type="range" min="0" max="0.1" step="0.005"
-                                    value={settings.glitch.rgbSplit}
+                                    type="range" min="0" max={RGB_SPLIT_MAX} step="0.0001"
+                                    value={Math.min(settings.glitch.rgbSplit, RGB_SPLIT_MAX)}
                                     disabled={!settings.glitch.rgbSplitEnabled}
                                     onChange={(e) => updateGlitchSettings({ rgbSplit: parseFloat(e.target.value) })}
                                 />

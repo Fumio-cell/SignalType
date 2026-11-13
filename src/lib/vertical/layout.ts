@@ -56,6 +56,11 @@ export interface Layout {
 
 const CLOCKWISE = -Math.PI / 2;
 
+/** Distance between the column centres of vertical text, in em: Zen Kaku Gothic New's own line pitch (1.448 em). */
+export const DEFAULT_COLUMN_PITCH = 1.448;
+export const MIN_COLUMN_PITCH = 1;
+export const MAX_COLUMN_PITCH = 2;
+
 /** Where the ink of a glyph sits in its cell, as distances from the left and bottom edge of the em cell. */
 function cellInk(m: GlyphMetrics, emC: number) {
     const left = (1 - m.adv) / 2 + m.xMin;

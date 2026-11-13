@@ -5,7 +5,10 @@ import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
 import * as THREE from 'three';
 import { frameRandom, getExportTime, isExportActive } from '@/lib/export/frameClock';
-import { layoutHorizontal, layoutVertical, type Drawable, type Layout, type Lookup } from '@/lib/vertical/layout';
+import { layoutHorizontal, layoutVertical, MAX_COLUMN_PITCH, MIN_COLUMN_PITCH, type Drawable, type Layout, type Lookup } from '@/lib/vertical/layout';
+import { cssColor } from '@/lib/tokens';
+import { beatEnvelope } from '@/lib/audio/levels';
+import { stageInk } from '@/lib/look/stageInk';
 
 // 2D text: troika downloads fallback fonts from cdn.jsdelivr.net for any glyph its font lacks. Nothing
 // here ever hands it such a character: text is split between the chosen font and the bundled Zen Kaku
@@ -33,6 +36,12 @@ export function GlitchTextScene() {
     // children's world transform, so animating the text itself would bake the animation phase of the
     // moment into the centering offset.
     const textRef = useRef<THREE.Group>(null);
+    // WEIGHT: a beat pushes the extrusion deeper (this group's z scale) and swings the light.
+    const depthRef = useRef<THREE.Group>(null);
+    const lightRef = useRef<THREE.DirectionalLight>(null);
+    const inkBox = useMemo(() => new THREE.Box3(), []);
+    const inkCorner = useMemo(() => new THREE.Vector3(), []);
+    const inkCorner0 = useMemo(() => new THREE.Box3(), []);
     const features = useAudioFeatures();
     const glitch = useAppStore(state => state.settings.glitch);
 
@@ -94,6 +103,52 @@ export function GlitchTextScene() {
                 }
             });
             textRef.current.scale.set(1, 1, 1); // Reset scale in case it was shrunk before
+
+            // The beat, from the audio at the current time alone (so every export agrees). Only the WEIGHT look uses it;
+            // the existing "Audio burst gain" slider is how far it reaches.
+            const st = useAppStore.getState();
+            const beat = render.preset === 'weight' ? beatEnvelope(st.onsetStrength, st.audioBuffer, currentTime) * glitch.burstGain : 0;
+            if (depthRef.current) depthRef.current.scale.z = 1 + 0.6 * beat;
+            if (lightRef.current) {
+                const angle = Math.PI / 4 + 0.5 * beat;
+                const reach = 10 * Math.SQRT2;
+                lightRef.current.position.set(reach * Math.cos(angle), reach * Math.sin(angle), 5);
+            }
+
+            // Where the text is in the frame, for the effects that must stay on it.
+            // Tight bounds of what is drawn: the glyph bounds of troika text (its mesh is as tall as the line box,
+            // taller than the ink) and the geometry of 3D text.
+            textRef.current.updateWorldMatrix(true, true);
+            inkBox.makeEmpty();
+            textRef.current.traverse((o: any) => {
+                if (typeof o.sync === 'function') {
+                    const vb = o.textRenderInfo?.visibleBounds;
+                    if (!vb) return;
+                    for (let i = 0; i < 4; i++) inkBox.expandByPoint(inkCorner.set(i & 1 ? vb[2] : vb[0], i & 2 ? vb[3] : vb[1], 0).applyMatrix4(o.matrixWorld));
+                } else if (o.isMesh && o.geometry) {
+                    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+                    if (o.geometry.boundingBox) inkBox.union(inkCorner0.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld));
+                }
+            });
+            if (inkBox.isEmpty()) {
+                stageInk.valid = false;
+            } else {
+                let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+                for (let i = 0; i < 8; i++) {
+                    inkCorner.set(i & 1 ? inkBox.max.x : inkBox.min.x, i & 2 ? inkBox.max.y : inkBox.min.y, i & 4 ? inkBox.max.z : inkBox.min.z).project(state.camera);
+                    const u = inkCorner.x * 0.5 + 0.5;
+                    const v = inkCorner.y * 0.5 + 0.5;
+                    if (u < x0) x0 = u;
+                    if (u > x1) x1 = u;
+                    if (v < y0) y0 = v;
+                    if (v > y1) y1 = v;
+                }
+                stageInk.valid = x1 > x0 && y1 > y0;
+                stageInk.x0 = Math.max(0, x0);
+                stageInk.x1 = Math.min(1, x1);
+                stageInk.y0 = Math.max(0, y0);
+                stageInk.y1 = Math.min(1, y1);
+            }
         }
     });
 
@@ -153,12 +208,12 @@ export function GlitchTextScene() {
         while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
         const emC = { p: primary.data.st.emCenter, f: fallback?.data.st.emCenter ?? primary.data.st.emCenter };
         const { pitch2D, pitch3D } = primary.data.st;
-        // Horizontal lines keep the pitch this mode already uses. Columns of vertical text use the larger of
-        // the two existing pitches, and never less than one em, so 2D and 3D set the same columns.
+        // Horizontal lines keep the pitch this mode already uses. Columns of vertical text use the column pitch
+        // knob, the same in 2D and 3D.
         return render.vertical
-            ? layoutVertical(lines, lookup, emC, Math.max(1, pitch2D, pitch3D))
+            ? layoutVertical(lines, lookup, emC, Math.min(MAX_COLUMN_PITCH, Math.max(MIN_COLUMN_PITCH, render.columnPitch)))
             : layoutHorizontal(lines, lookup, emC, is2D ? pitch2D : pitch3D, is2D ? 'center' : 'left');
-    }, [pieced, primary, fallback, displayText, lookup, render.vertical, is2D]);
+    }, [pieced, primary, fallback, displayText, lookup, render.vertical, render.columnPitch, is2D]);
 
     const centerKey = is2D
         ? 'flat'
@@ -167,23 +222,25 @@ export function GlitchTextScene() {
     const extrusion = render.bevelEnabled ? 0.2 : 0.05;
     const emWorld = is2D ? render.fontSize : render.fontSize * EM_PER_SIZE_3D;
 
+    // One colour: the paper token of signal.css (src/lib/tokens.ts reads it).
+    const paper = useMemo(() => cssColor('--paper'), []);
     const materialContent = useMemo(() => {
         switch (render.materialMode) {
             case 'metallic':
-                return <meshStandardMaterial color="#ffffff" metalness={0.8} roughness={0.2} transparent={true} opacity={1} />;
+                return <meshStandardMaterial color={paper} metalness={0.8} roughness={0.2} transparent={true} opacity={1} />;
             case 'standard':
             default:
-                return <meshStandardMaterial color="#eeeeee" transparent={true} opacity={1} />;
+                return <meshStandardMaterial color={paper} transparent={true} opacity={1} />;
         }
-    }, [render.materialMode]);
+    }, [render.materialMode, paper]);
 
     return (
         <group>
             <ambientLight intensity={0.5} />
-            <directionalLight position={[10, 10, 5]} intensity={1.5} />
-            <spotLight position={[-10, 10, 10]} angle={0.3} penumbra={1} intensity={2} color="#4ade80" />
+            <directionalLight ref={lightRef} position={[10, 10, 5]} intensity={1.5} />
 
             <group ref={textRef}>
+                <group ref={depthRef}>
                 {layout && primary ? (
                     // The 3D block is centred in depth like <Center> does for plain text.
                     <group position={[0, 0, is2D ? 0 : -extrusion / 2]}>
@@ -259,6 +316,7 @@ export function GlitchTextScene() {
                         )}
                     </Center>
                 )}
+                </group>
             </group>
         </group>
     );

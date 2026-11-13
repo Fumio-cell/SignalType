@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AppState, GlitchSettings, MotionSettings, RenderSettings } from '../types/state';
 import { DEFAULT_FONT } from '../lib/fonts/presets';
+import { DEFAULT_COLUMN_PITCH } from '../lib/vertical/layout';
 
 interface AppStore extends AppState {
     currentLineIndex: number;
@@ -19,7 +20,11 @@ interface AppStore extends AppState {
     setSeed: (seed: number) => void;
 }
 
+// The opening state is the WEIGHT look: no glitch, no colour split, no grain; extrusion, bevel and light make the picture.
 const initialRender: RenderSettings = {
+    preset: 'weight',
+    ink: 0,
+    columnPitch: DEFAULT_COLUMN_PITCH,
     text: 'GLITCH\nTEXT',
     textMode: '3D',
     // Zen Kaku Gothic New: Latin and Japanese. initFonts() converts the glyphs of the text.
@@ -29,21 +34,21 @@ const initialRender: RenderSettings = {
     vertical: false,
     fontSize: 1.0,
     bevelEnabled: true,
-    materialMode: 'metallic',
+    materialMode: 'standard',
     sequenceMode: true,
     sequenceThreshold: 0.6,
     sequenceDuration: 0.8
 };
 
 const initialGlitch: GlitchSettings = {
-    intensityBase: 0.2,
-    burstGain: 1.5,
+    intensityBase: 0,
+    burstGain: 1.5, // in WEIGHT: how far a beat pushes the depth and the light
     slices: 10,
-    rgbSplit: 0.02,
-    rgbSplitEnabled: true,
-    verticalShake: 0.1,
+    rgbSplit: 0,
+    rgbSplitEnabled: false,
+    verticalShake: 0,
     baseFloat: 0.1,
-    grain: 0.1,
+    grain: 0,
     stutterProb: 0.3,
     stutterFrames: 5,
 };
@@ -68,7 +73,7 @@ export const useAppStore = create<AppStore>((set) => ({
     texture: null,
 
     orderUser: 0.8,
-    turbulenceUser: 0.2,
+    turbulenceUser: 0,
     seed: 12345,
 
     currentLineIndex: 0,
