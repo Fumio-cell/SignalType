@@ -2,8 +2,9 @@ export interface RenderSettings {
     text: string;
     textMode: '3D' | '2D';
     font: string; // URL or name
-    customFontData: any | null; // Parsed ThreeJS Font object
-    customFontUrl: string | null; // Raw font URL for 2D text
+    customFontData: any | null; // Typeface JSON holding only the glyphs of the current text (src/lib/fontLoader.ts)
+    customFontUrl: string | null; // Font file URL for 2D text
+    json3D: boolean; // 3D text uses the ready-made typeface JSON in `font` (Inter Bold) instead of customFontData
     fontSize: number;
     bevelEnabled: boolean;
     materialMode: 'standard' | 'metallic';

@@ -1,4 +1,4 @@
-import { useState, useCallback, Suspense } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ControlPanel } from './components/ui/ControlPanel';
 import { AudioPlayerPanel } from './components/ui/AudioPlayerPanel';
@@ -6,12 +6,12 @@ import { GlitchTextScene } from './components/canvas/Scene';
 import { PostFX } from './components/canvas/PostFX';
 import { ExportBridge } from './components/canvas/ExportBridge';
 import { useAppStore } from './store/appStore';
-import { loadCustomFont } from './lib/fontLoader';
+import { importFontFile, initFonts } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
 import { decodeAudioFile } from './lib/audio/decodeAudioFile';
 import { Header } from './components/ui/Header';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useExportMode } from './lib/export/stage';
+import { EXPORT_SIZES, useExportMode, useExportResolution } from './lib/export/stage';
 import { NoticeHost } from './components/NoticeHost';
 import { notify } from './lib/notify';
 
@@ -19,7 +19,12 @@ function App() {
     const [isDragging, setIsDragging] = useState(false);
     const exporting = useExportMode(state => state.active);
     const setAudio = useAppStore(state => state.setAudio);
-    const updateRenderSettings = useAppStore(state => state.updateRenderSettings);
+    const resolution = useExportResolution(state => state.resolution);
+    const frame = EXPORT_SIZES[resolution];
+
+    useEffect(() => {
+        initFonts();
+    }, []);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -45,14 +50,7 @@ function App() {
 
         try {
             if (name.endsWith('.ttf') || name.endsWith('.otf') || name.endsWith('.ttc') || name.endsWith('.dfont')) {
-                const arrayBuffer = await file.arrayBuffer();
-                try {
-                    const customFont = await loadCustomFont(arrayBuffer, file.name);
-                    updateRenderSettings({ customFontData: customFont, font: file.name });
-                } catch (loadErr) {
-                    console.error("loadCustomFont error:", loadErr);
-                    notify("Failed to load font file: " + String(loadErr), { id: 'font-load', tone: 'error' });
-                }
+                await importFontFile(file);
             } else if (name.endsWith('.json')) {
                 importRecipe(file);
             } else if (file.type.startsWith('audio/') || name.endsWith('.wav') || name.endsWith('.mp3') || name.endsWith('.aif') || name.endsWith('.aiff') || name.endsWith('.aifc')) {
@@ -69,7 +67,7 @@ function App() {
             console.error("Error handling dropped file:", err);
             notify("Failed to load the file: " + String(err), { id: 'drop-failed', tone: 'error' });
         }
-    }, [setAudio, updateRenderSettings]);
+    }, [setAudio]);
 
     return (
         <div
@@ -101,21 +99,31 @@ function App() {
                         SignalType v2.1
                     </div>
 
-                    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-ink-stage">
-                        <ErrorBoundary>
-                            <Canvas
-                                frameloop={exporting ? 'never' : 'always'}
-                                dpr={exporting ? 1 : [1, 2]}
-                                camera={{ position: [0, 0, 5], fov: 45 }}
-                                gl={{ preserveDrawingBuffer: true, antialias: false, alpha: true }}
-                            >
-                                <Suspense fallback={null}>
-                                    <GlitchTextScene />
-                                    <PostFX />
-                                    <ExportBridge />
-                                </Suspense>
-                            </Canvas>
-                        </ErrorBoundary>
+                    {/* The stage is letterboxed to the export frame: ink around it, ink-stage inside. */}
+                    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-ink" style={{ containerType: 'size' }}>
+                        <div
+                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-ink-stage"
+                            data-testid="stage-frame"
+                            style={{
+                                width: `min(100cqw, calc(100cqh * ${frame.width} / ${frame.height}))`,
+                                height: `min(100cqh, calc(100cqw * ${frame.height} / ${frame.width}))`,
+                            }}
+                        >
+                            <ErrorBoundary>
+                                <Canvas
+                                    frameloop={exporting ? 'never' : 'always'}
+                                    dpr={exporting ? 1 : [1, 2]}
+                                    camera={{ position: [0, 0, 5], fov: 45 }}
+                                    gl={{ preserveDrawingBuffer: true, antialias: false, alpha: true }}
+                                >
+                                    <Suspense fallback={null}>
+                                        <GlitchTextScene />
+                                        <PostFX />
+                                        <ExportBridge />
+                                    </Suspense>
+                                </Canvas>
+                            </ErrorBoundary>
+                        </div>
                     </div>
                 </div>
 

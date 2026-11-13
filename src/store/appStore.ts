@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AppState, GlitchSettings, MotionSettings, RenderSettings } from '../types/state';
-import defaultFontUrl from '../lib/fonts/Inter_Bold.json?url';
+import { DEFAULT_FONT } from '../lib/fonts/presets';
 
 interface AppStore extends AppState {
     currentLineIndex: number;
@@ -22,9 +22,11 @@ interface AppStore extends AppState {
 const initialRender: RenderSettings = {
     text: 'GLITCH\nTEXT',
     textMode: '3D',
-    font: defaultFontUrl,
+    // Zen Kaku Gothic New: Latin and Japanese. initFonts() converts its glyphs for the 3D text.
+    font: DEFAULT_FONT.url,
     customFontData: null,
-    customFontUrl: null,
+    customFontUrl: DEFAULT_FONT.url,
+    json3D: false,
     fontSize: 1.0,
     bevelEnabled: true,
     materialMode: 'metallic',

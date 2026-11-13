@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportVideo, ExportUnsupportedError } from '@/lib/export/exportVideo';
-import { getExportStage } from '@/lib/export/stage';
+import { EXPORT_SIZES, getExportStage, useExportResolution } from '@/lib/export/stage';
+import { fontSettled } from '@/lib/fontLoader';
 import { DEMO_MODE, DEMO_MAX_SECONDS, BUY_URL } from '@/config';
 import { notify } from '@/lib/notify';
 
 export function ExportPanel() {
     const { duration } = useAppStore();
-    const [resolution, setResolution] = useState<'1080p' | '4K'>('1080p');
+    const resolution = useExportResolution((s) => s.resolution);
+    const setResolution = useExportResolution((s) => s.set);
     const [format, setFormat] = useState<'mp4' | 'zip'>('mp4');
     const [isExporting, setIsExporting] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -36,8 +38,10 @@ export function ExportPanel() {
                 }
                 const stage = getExportStage();
                 if (!stage) throw new Error('The stage is not ready yet.');
-                const width = resolution === '4K' ? 3840 : 1920;
-                const height = resolution === '4K' ? 2160 : 1080;
+                // The 3D glyphs follow the text a moment after the last keystroke; the first
+                // frame must not be drawn before they have arrived.
+                await fontSettled();
+                const { width, height } = EXPORT_SIZES[resolution];
 
                 await exportVideo({
                     width,
@@ -78,7 +82,7 @@ export function ExportPanel() {
             <select
                 aria-label="Resolution"
                 value={resolution}
-                onChange={(e) => setResolution(e.target.value as any)}
+                onChange={(e) => setResolution(e.target.value as '1080p' | '4K')}
                 className="field !w-auto !py-sp1"
                 disabled={isExporting}
             >

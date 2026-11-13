@@ -2,27 +2,10 @@ import React, { useRef } from 'react';
 import { Settings2, Upload, Download, Type, Zap, AudioLines, FileText, X } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportRecipe, importRecipe } from '@/lib/export/recipe';
-import { loadCustomFont } from '@/lib/fontLoader';
+import { importFontFile, selectPresetFont, useFontStatus } from '@/lib/fontLoader';
+import { DEFAULT_FONT, PRESET_FONTS } from '@/lib/fonts/presets';
 import { IS_PRO, BUY_URL } from '@/config';
 import { notify } from '@/lib/notify';
-
-import defaultFontUrl from '@/lib/fonts/Inter_Bold.json?url';
-import poppinsRegUrl from '@/lib/fonts/Poppins-Regular.ttf?url';
-import poppinsBoldUrl from '@/lib/fonts/Poppins-Bold.ttf?url';
-import crimsonRegUrl from '@/lib/fonts/CrimsonText-Regular.ttf?url';
-import spaceMonoUrl from '@/lib/fonts/SpaceMono-Regular.ttf?url';
-import shipporiMinchoUrl from '@/lib/fonts/ShipporiMincho-Regular.ttf?url';
-import zenKakuUrl from '@/lib/fonts/ZenKakuGothicNew-Regular.ttf?url';
-
-const PRESET_FONTS = [
-    { label: 'Inter Bold (3D Only)', url: defaultFontUrl, isTTF: false },
-    { label: 'Poppins Regular (2D/3D)', url: poppinsRegUrl, isTTF: true },
-    { label: 'Poppins Bold (2D/3D)', url: poppinsBoldUrl, isTTF: true },
-    { label: 'Crimson Text (Serif)', url: crimsonRegUrl, isTTF: true },
-    { label: 'Space Mono (Tech)', url: spaceMonoUrl, isTTF: true },
-    { label: 'Zen Kaku Gothic (Japanese sans)', url: zenKakuUrl, isTTF: true },
-    { label: 'Shippori Mincho (Japanese serif)', url: shipporiMinchoUrl, isTTF: true },
-];
 
 export function ControlPanel() {
     const {
@@ -34,6 +17,7 @@ export function ControlPanel() {
         turbulenceUser,
         setTurbulence
     } = useAppStore();
+    const fontBusy = useFontStatus(state => state.busy);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fontInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,46 +40,14 @@ export function ControlPanel() {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handlePresetChange = async (url: string) => {
-        if (url === 'custom') return;
-        
+    const handlePresetChange = (url: string) => {
         const preset = PRESET_FONTS.find(p => p.url === url);
-        if (!preset) return;
-
-        if (preset.isTTF) {
-            try {
-                const response = await fetch(preset.url);
-                const arrayBuffer = await response.arrayBuffer();
-                const customFont = await loadCustomFont(arrayBuffer, preset.label);
-                
-                updateRenderSettings({ 
-                    customFontData: customFont, 
-                    customFontUrl: preset.url, 
-                    font: preset.url 
-                });
-            } catch (err) {
-                console.error("Failed to load preset TTF:", err);
-            }
-        } else {
-            updateRenderSettings({ font: url, customFontData: null, customFontUrl: null });
-        }
+        if (preset) void selectPresetFont(preset);
     };
 
-    const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            handleGatedAction(async () => {
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const customFont = await loadCustomFont(arrayBuffer, file.name);
-                    const customFontUrl = URL.createObjectURL(file);
-                    updateRenderSettings({ customFontData: customFont, customFontUrl, font: file.name });
-                } catch (err) {
-                    console.error("Failed to load font details:", err);
-                    notify("Failed to load font: " + String(err), { id: 'font-load', tone: 'error' });
-                }
-            }, "Custom font upload");
-        }
+        if (file) void importFontFile(file);
         if (fontInputRef.current) fontInputRef.current.value = '';
     };
 
@@ -201,19 +153,18 @@ export function ControlPanel() {
                             <label htmlFor="f-font" className="control text-paper-dim">Preset font</label>
                             <select
                                 id="f-font"
-                                value={(PRESET_FONTS.some(p => p.url === settings.render.font) || !settings.render.customFontData) ? settings.render.font : 'custom'}
+                                value={PRESET_FONTS.some(p => p.url === settings.render.font) ? settings.render.font : 'custom'}
                                 onChange={(e) => handlePresetChange(e.target.value)}
                                 className="field"
                             >
                                 {PRESET_FONTS.map(pf => (
                                     <option key={pf.label} value={pf.url}>{pf.label}</option>
                                 ))}
-                                {settings.render.customFontData && !PRESET_FONTS.some(p => p.url === settings.render.font) && <option value="custom">Custom uploaded font</option>}
+                                {!PRESET_FONTS.some(p => p.url === settings.render.font) && <option value="custom">{settings.render.font}</option>}
                             </select>
 
                             <div className="mt-sp3 flex items-center gap-sp2">
                                 <span id="l-fontimport" className="control text-paper-dim">Custom font import</span>
-                                {!IS_PRO && <span className="control text-paper-label">PRO</span>}
                             </div>
                             <div className="flex gap-sp2">
                                 <input
@@ -231,24 +182,24 @@ export function ControlPanel() {
                                     className="btn flex-1"
                                 >
                                     <FileText className="h-4 w-4" aria-hidden="true" />
-                                    {IS_PRO ? 'Import TTF/OTF' : 'Import TTF/OTF (PRO)'}
+                                    Import TTF/OTF
                                 </button>
-                                {settings.render.customFontData && (
+                                {settings.render.font !== DEFAULT_FONT.url && (
                                     <button
                                         type="button"
-                                        onClick={() => updateRenderSettings({ customFontData: null, customFontUrl: null, font: defaultFontUrl })}
+                                        onClick={() => void selectPresetFont(DEFAULT_FONT)}
                                         className="btn btn-icon"
-                                        aria-label="Clear custom font"
-                                        title="Clear custom font"
+                                        aria-label="Back to the default font"
+                                        title="Back to the default font"
                                     >
                                         <X className="h-4 w-4" aria-hidden="true" />
                                     </button>
                                 )}
                             </div>
                             <div className="note mt-sp1 truncate">
-                                {settings.render.customFontData
-                                    ? `Typeface active (${PRESET_FONTS.find(p => p.url === settings.render.font)?.label || settings.render.font})`
-                                    : 'Internal JSON font active'}
+                                {fontBusy
+                                    ? 'Reading font…'
+                                    : `Font: ${PRESET_FONTS.find(p => p.url === settings.render.font)?.label || settings.render.font}`}
                             </div>
                         </div>
 

@@ -26,6 +26,7 @@
     "lucide-react": "^0.576.0",
     "mp4-muxer": "^5.2.2",
     "opentype.js": "^1.3.4",
+    "postprocessing": "^6.38.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.5.0",

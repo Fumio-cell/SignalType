@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text, Text3D, Center } from '@react-three/drei';
 import { useAppStore } from '@/store/appStore';
@@ -11,11 +11,25 @@ import defaultFont2DUrl from '@/lib/fonts/ZenKakuGothicNew-Regular.ttf?url';
 // and for any glyph the font lacks it fetches resolver data from the same CDN.
 // Zen Kaku Gothic New is the bundled TTF that covers both Latin and Japanese, so it is the default.
 
+// drei's <Center cacheKey={centerKey}> measures its children only when its cacheKey changes. For 3D text the key has to
+// follow what shapes the outline: the converted glyph data, the drawn text, the size and the extrusion.
+const fontDataIds = new WeakMap<object, number>();
+let nextFontDataId = 0;
+function fontDataId(data: object | null): number {
+    if (!data) return 0;
+    let id = fontDataIds.get(data);
+    if (id === undefined) fontDataIds.set(data, (id = ++nextFontDataId));
+    return id;
+}
+
 export function GlitchTextScene() {
     const render = useAppStore(state => state.settings.render);
     const currentLineIndex = useAppStore(state => state.currentLineIndex);
     const lastSequenceTime = useAppStore(state => state.lastSequenceTime);
-    const textRef = useRef<THREE.Mesh>(null);
+    // The float/shake animation moves this group, which sits outside <Center>: Center measures its
+    // children's world transform, so animating the text itself would bake the animation phase of the
+    // moment into the centering offset.
+    const textRef = useRef<THREE.Group>(null);
     const features = useAudioFeatures();
     const glitch = useAppStore(state => state.settings.glitch);
 
@@ -80,6 +94,15 @@ export function GlitchTextScene() {
         }
     });
 
+    // 3D text needs typeface JSON: the converted glyphs of the font, or the ready-made JSON font.
+    // Until the conversion has arrived 3D text draws nothing, rather than a failed font load.
+    const font3D = render.json3D ? render.font : render.customFontData;
+
+    // User Timing mark so a harness can tell when new font data reached the scene.
+    useEffect(() => {
+        performance.mark('font:committed');
+    }, [render.customFontData]);
+
     const displayText = useMemo(() => {
         if (!render.sequenceMode || !render.text) return render.text;
 
@@ -90,6 +113,21 @@ export function GlitchTextScene() {
         const safeIndex = currentLineIndex % lines.length;
         return lines[safeIndex] || '';
     }, [render.text, render.sequenceMode, currentLineIndex]);
+
+    // Draw only characters the font data holds. The converted glyphs follow the text a moment after a
+    // keystroke and a font may lack some characters. Without this, three logs an error per missing
+    // character and per render, and troika (2D) fetches a fallback font from a CDN, which would send
+    // the characters off this machine. A ready-made JSON font in 3D is drawn as is.
+    const glyphs: Record<string, unknown> | undefined = render.customFontData?.glyphs;
+    const shownText = useMemo(() => {
+        if (render.textMode === '3D' && render.json3D) return displayText;
+        if (!glyphs) return '';
+        return Array.from(displayText).filter((ch) => ch === '\n' || ch in glyphs).join('');
+    }, [displayText, glyphs, render.textMode, render.json3D]);
+
+    const centerKey = render.textMode === '2D'
+        ? 'flat'
+        : `${fontDataId(render.customFontData)}|${render.json3D}|${render.font}|${shownText}|${render.fontSize}|${render.bevelEnabled}`;
 
     const materialContent = useMemo(() => {
         switch (render.materialMode) {
@@ -107,37 +145,37 @@ export function GlitchTextScene() {
             <directionalLight position={[10, 10, 5]} intensity={1.5} />
             <spotLight position={[-10, 10, 10]} angle={0.3} penumbra={1} intensity={2} color="#4ade80" />
 
-            <Center>
-                {render.textMode === '2D' ? (
-                    <Text
-                        ref={textRef as any}
-                        font={render.customFontUrl || defaultFont2DUrl}
-                        fontSize={render.fontSize}
-                        anchorX="center"
-                        anchorY="middle"
-                        textAlign="center"
-                    >
-                        {displayText}
-                        {materialContent}
-                    </Text>
-                ) : (
-                    <Text3D
-                        ref={textRef as any}
-                        font={render.customFontData || render.font}
-                        size={render.fontSize}
-                        height={render.bevelEnabled ? 0.2 : 0.05}
-                        curveSegments={12}
-                        bevelEnabled={render.bevelEnabled}
-                        bevelThickness={0.02}
-                        bevelSize={0.02}
-                        bevelOffset={0}
-                        bevelSegments={5}
-                    >
-                        {displayText}
-                        {materialContent}
-                    </Text3D>
-                )}
-            </Center>
+            <group ref={textRef}>
+                <Center cacheKey={centerKey}>
+                    {render.textMode === '2D' ? (
+                        <Text
+                            font={render.customFontUrl || defaultFont2DUrl}
+                            fontSize={render.fontSize}
+                            anchorX="center"
+                            anchorY="middle"
+                            textAlign="center"
+                        >
+                            {shownText}
+                            {materialContent}
+                        </Text>
+                    ) : font3D && (
+                        <Text3D
+                            font={font3D}
+                            size={render.fontSize}
+                            height={render.bevelEnabled ? 0.2 : 0.05}
+                            curveSegments={12}
+                            bevelEnabled={render.bevelEnabled}
+                            bevelThickness={0.02}
+                            bevelSize={0.02}
+                            bevelOffset={0}
+                            bevelSegments={5}
+                        >
+                            {shownText}
+                            {materialContent}
+                        </Text3D>
+                    )}
+                </Center>
+            </group>
         </group>
     );
 }
