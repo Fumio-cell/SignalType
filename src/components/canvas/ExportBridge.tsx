@@ -8,6 +8,7 @@ import { getComposer, setExportStage, useExportMode, type ExportStage } from '@/
 import { beginDeterministic, endDeterministic, setFrame, withSeededRandom } from '@/lib/export/frameClock';
 import { atlasSignature, preloadExportAtlas } from '@/lib/export/atlas';
 import { isTroikaText, type TroikaText } from '@/lib/troikaText';
+import { applyAutomationAt } from '@/lib/automation/engine';
 
 /**
  * Lets the export render at an exact pixel size, independent of the window and of DPR.
@@ -118,7 +119,11 @@ export function ExportBridge() {
             async renderFrame(frame, fps) {
                 const seconds = frame / fps;
                 setFrame(frame, seconds);
-                flushSync(() => useAppStore.getState().setCurrentTime(seconds));
+                flushSync(() => {
+                    useAppStore.getState().setCurrentTime(seconds);
+                    // The knobs at exactly this frame time, from the curves alone (nothing carried over from the last frame).
+                    applyAutomationAt(seconds, true);
+                });
                 await settleText();
                 const s = store.getState();
                 // Anything that re-measured the stage meanwhile (a Canvas re-render) is undone here.

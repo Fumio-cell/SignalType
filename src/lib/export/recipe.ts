@@ -2,6 +2,10 @@ import { useAppStore } from '@/store/appStore';
 import { notify } from '@/lib/notify';
 import { selectPresetFont } from '@/lib/fontLoader';
 import { PRESET_FONTS, type PresetFont } from '@/lib/fonts/presets';
+import { useAutomation } from '@/lib/automation/store';
+import { applyAutomationAt } from '@/lib/automation/engine';
+import { AUTOMATION_PARAMS } from '@/lib/automation/params';
+import type { AutomationData } from '@/lib/automation/types';
 
 export interface AppRecipe {
     version: string;
@@ -33,6 +37,8 @@ export interface AppRecipe {
         orderUser: number;
         turbulenceUser: number;
     };
+    /** Recorded knob movements by time (recipes from before automation have none: the current automation stays). */
+    automation?: AutomationData;
 }
 
 /** File name of an asset URL without its build hash: /assets/Inter_Bold-Dk3f9aXc.json -> Inter_Bold.json */
@@ -75,7 +81,8 @@ export function exportRecipe() {
         audioModulation: {
             orderUser: state.orderUser,
             turbulenceUser: state.turbulenceUser
-        }
+        },
+        automation: useAutomation.getState().curves,
     };
 
     const blob = new Blob([JSON.stringify(recipe, null, 2)], { type: 'application/json' });
@@ -123,6 +130,22 @@ export function importRecipe(file: File) {
             state.updateGlitchSettings(recipe.settings.glitch);
             state.setOrder(recipe.audioModulation.orderUser);
             state.setTurbulence(recipe.audioModulation.turbulenceUser);
+
+            // Automation: only well-formed points of the eight known knobs, in time order.
+            if (recipe.automation && typeof recipe.automation === 'object') {
+                const curves: AutomationData = {};
+                for (const p of AUTOMATION_PARAMS) {
+                    const raw = recipe.automation[p.id];
+                    if (!Array.isArray(raw)) continue;
+                    const points = raw
+                        .filter((q) => q && Number.isFinite(q.t) && Number.isFinite(q.v))
+                        .map((q) => ({ t: q.t, v: q.v }))
+                        .sort((a, b) => a.t - b.t);
+                    if (points.length > 0) curves[p.id] = points;
+                }
+                useAutomation.getState().setCurves(curves);
+                applyAutomationAt(useAppStore.getState().currentTime, true);
+            }
 
         } catch (err) {
             console.error("Failed to parse recipe file", err);

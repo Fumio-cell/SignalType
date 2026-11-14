@@ -8,6 +8,11 @@ import { applyPreset, LOOK_PRESETS } from '@/lib/look/presets';
 import { RGB_SPLIT_MAX } from '@/lib/look/limits';
 import { MAX_COLUMN_PITCH, MIN_COLUMN_PITCH } from '@/lib/vertical/layout';
 import type { RenderSettings } from '@/types/state';
+import { AutoMark } from '@/components/ui/AutoMark';
+import { useAutomation, hasCurve } from '@/lib/automation/store';
+import { recordChange } from '@/lib/automation/engine';
+import { PARAM_BY_ID } from '@/lib/automation/params';
+import type { AutomationParamId } from '@/lib/automation/types';
 
 export function ControlPanel() {
     const {
@@ -19,7 +24,18 @@ export function ControlPanel() {
         turbulenceUser,
         setTurbulence,
         currentLineIndex,
+        isPlaying,
     } = useAppStore();
+    const curves = useAutomation((s) => s.curves);
+    const armed = useAutomation((s) => s.armed);
+    // A knob with automation can be moved only while recording (armed and playing): otherwise it is not clear which one is in effect.
+    const blocked = (id: AutomationParamId) => hasCurve(curves, id) && !(armed && isPlaying);
+    const setKnob = (id: AutomationParamId, v: number) => {
+        const p = PARAM_BY_ID[id];
+        if (p.target === 'render') updateRenderSettings({ [p.key]: v });
+        else updateGlitchSettings({ [p.key]: v });
+        recordChange(id, v);
+    };
     // Which line the sequence is on, when it is on and there is more than one.
     const lineCount = settings.render.text.split('\n').filter((line) => line.trim().length > 0).length;
     const fontBusy = useFontStatus(state => state.busy);
@@ -109,13 +125,15 @@ export function ControlPanel() {
                     <div className="flex flex-col gap-sp1">
                         <div className="flex justify-between">
                             <label htmlFor="f-ink" className="control text-paper-dim">Ink bleed</label>
+                            <AutoMark id="ink" />
                             <output htmlFor="f-ink" className="control text-paper-label">{settings.render.ink.toFixed(2)}</output>
                         </div>
                         <input
                             id="f-ink"
                             type="range" min="0" max="1" step="0.01"
                             value={settings.render.ink}
-                            onChange={(e) => updateRenderSettings({ ink: parseFloat(e.target.value) })}
+                            onChange={(e) => setKnob('ink', parseFloat(e.target.value))}
+                            disabled={blocked('ink')}
                         />
                     </div>
                 </section>
@@ -144,12 +162,14 @@ export function ControlPanel() {
 
                         <div className="flex flex-col gap-sp1">
                             <label htmlFor="f-size" className="control text-paper-dim">Size</label>
+                            <AutoMark id="size" />
                             <input
                                 id="f-size"
                                 type="range"
                                 min="0.1" max="5.0" step="0.05"
                                 value={settings.render.fontSize}
-                                onChange={(e) => updateRenderSettings({ fontSize: parseFloat(e.target.value) })}
+                                onChange={(e) => setKnob('size', parseFloat(e.target.value))}
+                                disabled={blocked('size')}
                             />
                         </div>
 
@@ -181,14 +201,15 @@ export function ControlPanel() {
                         <div className="flex flex-col gap-sp1">
                             <div className="flex justify-between">
                                 <label htmlFor="f-pitch" className="control text-paper-dim">Column pitch</label>
+                            <AutoMark id="columnPitch" />
                                 <output htmlFor="f-pitch" className="control text-paper-label">{settings.render.columnPitch.toFixed(2)} em</output>
                             </div>
                             <input
                                 id="f-pitch"
                                 type="range" min={MIN_COLUMN_PITCH} max={MAX_COLUMN_PITCH} step="0.01"
                                 value={settings.render.columnPitch}
-                                disabled={!settings.render.vertical}
-                                onChange={(e) => updateRenderSettings({ columnPitch: parseFloat(e.target.value) })}
+                                disabled={(!settings.render.vertical) || blocked('columnPitch')}
+                                onChange={(e) => setKnob('columnPitch', parseFloat(e.target.value))}
                             />
                         </div>
 
@@ -362,13 +383,15 @@ export function ControlPanel() {
                         <div className="flex flex-col gap-sp1">
                             <div className="flex justify-between">
                                 <label htmlFor="f-intensity" className="control text-paper-dim">Base intensity</label>
+                            <AutoMark id="intensity" />
                                 <output htmlFor="f-intensity" className="control text-paper-label">{settings.glitch.intensityBase.toFixed(2)}</output>
                             </div>
                             <input
                                 id="f-intensity"
                                 type="range" min="0" max="0.5" step="0.01"
                                 value={settings.glitch.intensityBase}
-                                onChange={(e) => updateGlitchSettings({ intensityBase: parseFloat(e.target.value) })}
+                                onChange={(e) => setKnob('intensity', parseFloat(e.target.value))}
+                                disabled={blocked('intensity')}
                             />
                         </div>
 
@@ -390,14 +413,15 @@ export function ControlPanel() {
                                     <label htmlFor="f-rgb" className="control flex items-center gap-sp2 text-paper-dim">
                                         RGB split spread
                                     </label>
+                            <AutoMark id="rgbSplit" />
                                     <output htmlFor="f-rgb" className="control text-paper-label">{(Math.min(settings.glitch.rgbSplit, RGB_SPLIT_MAX) * 1920).toFixed(1)} px</output>
                                 </div>
                                 <input
                                     id="f-rgb"
                                     type="range" min="0" max={RGB_SPLIT_MAX} step="0.0001"
                                     value={Math.min(settings.glitch.rgbSplit, RGB_SPLIT_MAX)}
-                                    disabled={!settings.glitch.rgbSplitEnabled}
-                                    onChange={(e) => updateGlitchSettings({ rgbSplit: parseFloat(e.target.value) })}
+                                    disabled={(!settings.glitch.rgbSplitEnabled) || blocked('rgbSplit')}
+                                    onChange={(e) => setKnob('rgbSplit', parseFloat(e.target.value))}
                                 />
                             </div>
                         </div>
@@ -405,26 +429,30 @@ export function ControlPanel() {
                         <div className="mt-sp2 flex flex-col gap-sp1 border-t border-line pt-sp3">
                             <div className="flex justify-between">
                                 <label htmlFor="f-shake" className="control text-paper-dim">Vertical shake</label>
+                            <AutoMark id="shake" />
                                 <output htmlFor="f-shake" className="control text-paper-label">{settings.glitch.verticalShake.toFixed(2)}</output>
                             </div>
                             <input
                                 id="f-shake"
                                 type="range" min="0" max="1" step="0.05"
                                 value={settings.glitch.verticalShake}
-                                onChange={(e) => updateGlitchSettings({ verticalShake: parseFloat(e.target.value) })}
+                                onChange={(e) => setKnob('shake', parseFloat(e.target.value))}
+                                disabled={blocked('shake')}
                             />
                         </div>
 
                         <div className="mt-sp2 flex flex-col gap-sp1 border-t border-line pt-sp3">
                             <div className="flex justify-between">
                                 <label htmlFor="f-float" className="control text-paper-dim">Ambient float</label>
+                            <AutoMark id="float" />
                                 <output htmlFor="f-float" className="control text-paper-label">{settings.glitch.baseFloat?.toFixed(2) || "0.10"}</output>
                             </div>
                             <input
                                 id="f-float"
                                 type="range" min="0" max="0.5" step="0.01"
                                 value={settings.glitch.baseFloat ?? 0.1}
-                                onChange={(e) => updateGlitchSettings({ baseFloat: parseFloat(e.target.value) })}
+                                onChange={(e) => setKnob('float', parseFloat(e.target.value))}
+                                disabled={blocked('float')}
                             />
                         </div>
 
@@ -444,13 +472,15 @@ export function ControlPanel() {
                         <div className="flex flex-col gap-sp1">
                             <div className="flex justify-between">
                                 <label htmlFor="f-burst" className="control text-paper-dim">Audio burst gain</label>
+                            <AutoMark id="burstGain" />
                                 <output htmlFor="f-burst" className="control text-paper-label">{settings.glitch.burstGain.toFixed(2)}x</output>
                             </div>
                             <input
                                 id="f-burst"
                                 type="range" min="0" max="3" step="0.05"
                                 value={settings.glitch.burstGain}
-                                onChange={(e) => updateGlitchSettings({ burstGain: parseFloat(e.target.value) })}
+                                onChange={(e) => setKnob('burstGain', parseFloat(e.target.value))}
+                                disabled={blocked('burstGain')}
                             />
                         </div>
                     </div>

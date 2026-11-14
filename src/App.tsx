@@ -7,6 +7,7 @@ import { PostFX } from './components/canvas/PostFX';
 import { ExportBridge } from './components/canvas/ExportBridge';
 import { useAppStore } from './store/appStore';
 import { importFontFile, initFonts } from './lib/fontLoader';
+import { initAutomation } from './lib/automation/engine';
 import { importRecipe } from './lib/export/recipe';
 import { loadAudioFile } from './lib/audio/player';
 import { Header } from './components/ui/Header';
@@ -35,6 +36,7 @@ function App() {
 
     useEffect(() => {
         initFonts();
+        initAutomation();
     }, []);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
