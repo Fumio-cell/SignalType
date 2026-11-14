@@ -1,4 +1,4 @@
-import { parse } from 'opentype.js';
+import { parse } from 'three/examples/jsm/libs/opentype.module.js';
 import type { Font } from 'opentype.js';
 import { extractTTFFromTTC } from './ttc';
 import { fullSizeOf } from '../vertical/rules';
@@ -49,9 +49,44 @@ export interface TypefaceData {
 /** Text3D's size 1 is 1000 typeface units, which is 0.72 em: one em is 100/72 of the size. */
 const EM_PER_SIZE = 100 / 72;
 
+/** A typeface JSON font as three's FontLoader reads it. */
+export interface TypefaceJson {
+    glyphs: Record<string, TypefaceGlyph>;
+    familyName: string;
+    ascender: number;
+    descender: number;
+    underlinePosition: number;
+    underlineThickness: number;
+    boundingBox: { xMin: number; xMax: number; yMin: number; yMax: number };
+    resolution: number;
+}
+
 export type ParsedFont =
     | { kind: 'opentype'; font: Font; familyName: string; glyphCount: number }
-    | { kind: 'typeface'; json: any; familyName: string; glyphCount: number };
+    | { kind: 'typeface'; json: TypefaceJson; familyName: string; glyphCount: number };
+
+/** One path command with every coordinate optional, which is how the conversion reads M, L, Q, C and Z alike. */
+interface LooseCommand {
+    type: string;
+    x?: number;
+    y?: number;
+    x1?: number;
+    y1?: number;
+    x2?: number;
+    y2?: number;
+}
+
+/** The parts of an opentype.js font that its typings do not describe. */
+interface FontInternals {
+    encoding: { cmap: { glyphIndexMap: Record<number, number> } };
+    tables: {
+        os2?: { sTypoAscender: number; sTypoDescender: number };
+        hhea?: { ascender?: number; descender?: number; lineGap?: number };
+        head?: { xMin?: number; xMax?: number; yMin?: number; yMax?: number };
+        post?: { underlinePosition?: number; underlineThickness?: number };
+    };
+}
+const internals = (font: Font) => font as unknown as FontInternals;
 
 export function parseFontBuffer(arrayBuffer: ArrayBuffer, fileName = ''): ParsedFont {
     let working = arrayBuffer;
@@ -65,7 +100,7 @@ export function parseFontBuffer(arrayBuffer: ArrayBuffer, fileName = ''): Parsed
             }
         }
     }
-    const font: Font = (parse as unknown as (b: ArrayBuffer, o: { lowMemory: boolean }) => Font)(working, { lowMemory: true });
+    const font: Font = parse(working, { lowMemory: true });
     if (!font || !font.glyphs) throw new Error('Failed to parse font data.');
     return {
         kind: 'opentype',
@@ -76,7 +111,8 @@ export function parseFontBuffer(arrayBuffer: ArrayBuffer, fileName = ''): Parsed
 }
 
 /** A ready-made typeface JSON (the Inter Bold preset) as a font source. */
-export function parseTypefaceJson(json: any): ParsedFont {
+export function parseTypefaceJson(value: unknown): ParsedFont {
+    const json = value as TypefaceJson | null;
     if (!json || !json.glyphs) throw new Error('Not a typeface JSON font.');
     return { kind: 'typeface', json, familyName: json.familyName || '', glyphCount: Object.keys(json.glyphs).length };
 }
@@ -94,7 +130,7 @@ export function requiredCodePoints(text: string): number[] {
 
 export function hasGlyph(parsed: ParsedFont, cp: number): boolean {
     if (parsed.kind === 'typeface') return String.fromCodePoint(cp) in parsed.json.glyphs;
-    const index = (parsed.font as any).encoding.cmap.glyphIndexMap[cp];
+    const index = internals(parsed.font).encoding.cmap.glyphIndexMap[cp];
     return index !== undefined && index !== 0;
 }
 
@@ -136,9 +172,9 @@ function convertGlyph(parsed: ParsedFont, cp: number): Converted {
     const { font } = parsed;
     const upm = font.unitsPerEm || 2048;
     const scale = 100000 / (upm * 72);
-    const index = (font as any).encoding.cmap.glyphIndexMap[cp] as number;
+    const index = internals(font).encoding.cmap.glyphIndexMap[cp];
     const glyph = font.glyphs.get(index);
-    const commands = glyph.path.commands as any[];
+    const commands: LooseCommand[] = glyph.path.commands;
     const round = Math.round;
     let o = '';
     for (const c of commands) {
@@ -173,7 +209,7 @@ function faceMetrics(parsed: ParsedFont): Omit<FaceMetrics, 'glyphs'> {
         return { emCenter: (j.ascender + j.descender) / 2 / em, pitch2D: pitch3D, pitch3D };
     }
     const { font } = parsed;
-    const t = (font as any).tables;
+    const t = internals(font).tables;
     const upm = font.unitsPerEm || 2048;
     // The em box of a CJK font sits between the typographic ascender and descender.
     const os2 = t.os2;
@@ -231,7 +267,7 @@ export function subsetCodePoints(parsed: ParsedFont, codePoints: number[]): Subs
     const { font } = parsed;
     const round = Math.round;
     const scale = 100000 / ((font.unitsPerEm || 2048) * 72);
-    const tables = (font as any).tables;
+    const tables = internals(font).tables;
     return {
         data: {
             glyphs,

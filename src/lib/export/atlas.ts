@@ -1,5 +1,7 @@
 import { preloadFont } from 'troika-three-text';
+import type { Object3D } from 'three';
 import { useAppStore } from '@/store/appStore';
+import { isTroikaText } from '@/lib/troikaText';
 
 /**
  * 2D text (troika) draws from an SDF atlas: one texture per glyph size, shared by every text and filled
@@ -41,13 +43,13 @@ export async function preloadExportAtlas(): Promise<void> {
 }
 
 /** What the atlas looks like to the texts drawn from it: texture size and the slot of every glyph. */
-export function atlasSignature(scene: { traverse: (fn: (o: any) => void) => void }): string {
+export function atlasSignature(scene: Object3D): string {
     const parts: string[] = [];
-    scene.traverse((o: any) => {
-        const info = o.textRenderInfo;
-        if (typeof o.sync === 'function' && info) {
+    scene.traverse((o) => {
+        const info = isTroikaText(o) ? o.textRenderInfo : undefined;
+        if (isTroikaText(o) && info) {
             const img = info.sdfTexture.image;
-            parts.push(`${img.width}x${img.height}|${o.text}|${Array.from(info.glyphAtlasIndices as ArrayLike<number>).join(',')}`);
+            parts.push(`${img.width}x${img.height}|${o.text}|${Array.from(info.glyphAtlasIndices).join(',')}`);
         }
     });
     return parts.join(';');

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { EffectComposer as EffectComposerImpl } from 'postprocessing';
 
 /**
  * True while an export owns the renderer. The Canvas takes its frameloop and dpr from this, because
@@ -45,9 +46,7 @@ export function getExportStage(): ExportStage | null {
 }
 
 /** The post-processing composer, registered by PostFX so the export can size its buffers. */
-export interface ResizableComposer {
-    setSize(width: number, height: number, updateStyle?: boolean): void;
-}
+export type ResizableComposer = EffectComposerImpl;
 
 let composer: ResizableComposer | null = null;
 

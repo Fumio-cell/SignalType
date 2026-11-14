@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppState, GlitchSettings, MotionSettings, RenderSettings } from '../types/state';
+import { AppState, GlitchSettings, RenderSettings } from '../types/state';
 import { DEFAULT_FONT } from '../lib/fonts/presets';
 import { DEFAULT_COLUMN_PITCH } from '../lib/vertical/layout';
 
@@ -7,19 +7,18 @@ interface AppStore extends AppState {
     currentLineIndex: number;
     lastSequenceTime: number;
     nextSequenceTime: number;
-    setCurrentLineIndex: (index: number) => void;
-    setLastSequenceTime: (time: number) => void;
     setSequenceState: (index: number, last: number, next: number) => void;
     setAudio: (buffer: AudioBuffer, url: string) => void;
+    /** True while the loaded audio is the bundled sample track. */
+    isSample: boolean;
+    setIsSample: (isSample: boolean) => void;
     setPlaying: (playing: boolean) => void;
     setCurrentTime: (time: number) => void;
     setAnalysisData: (data: Partial<AppState>) => void;
     updateRenderSettings: (updates: Partial<RenderSettings>) => void;
     updateGlitchSettings: (updates: Partial<GlitchSettings>) => void;
-    updateMotionSettings: (updates: Partial<MotionSettings>) => void;
     setOrder: (val: number) => void;
     setTurbulence: (val: number) => void;
-    setSeed: (seed: number) => void;
 }
 
 // The opening state is the WEIGHT look: no glitch, no colour split, no grain; extrusion, bevel and light make the picture.
@@ -53,13 +52,6 @@ const initialGlitch: GlitchSettings = {
     grain: 0,
 };
 
-const initialMotion: MotionSettings = {
-    directionDegrees: 90,
-    spread: 0.5,
-    density: 0.5,
-    speed: 1.0,
-};
-
 export const useAppStore = create<AppStore>((set) => ({
     audioBuffer: null,
     audioUrl: null,
@@ -74,8 +66,8 @@ export const useAppStore = create<AppStore>((set) => ({
 
     orderUser: 0.8,
     turbulenceUser: 0,
-    seed: 12345,
 
+    isSample: false,
     currentLineIndex: 0,
     lastSequenceTime: 0, // Set to 0 so it's visible initially before the first beat
     nextSequenceTime: 0,
@@ -83,7 +75,6 @@ export const useAppStore = create<AppStore>((set) => ({
     settings: {
         render: initialRender,
         glitch: initialGlitch,
-        motion: initialMotion,
     },
 
     // A new file drops the analysis of the old one at once; the envelopes of the new file arrive a moment later.
@@ -92,10 +83,9 @@ export const useAppStore = create<AppStore>((set) => ({
         onsetStrength: null, flux: null, flatness: null, texture: null,
         currentLineIndex: 0, lastSequenceTime: 0, nextSequenceTime: 0,
     }),
+    setIsSample: (isSample) => set({ isSample }),
     setPlaying: (playing) => set({ isPlaying: playing }),
     setCurrentTime: (time) => set({ currentTime: time }),
-    setCurrentLineIndex: (index) => set({ currentLineIndex: index }),
-    setLastSequenceTime: (time) => set({ lastSequenceTime: time }),
     setSequenceState: (index, last, next) => set({ currentLineIndex: index, lastSequenceTime: last, nextSequenceTime: next }),
     setAnalysisData: (data) => set({ ...data }),
 
@@ -105,11 +95,7 @@ export const useAppStore = create<AppStore>((set) => ({
     updateGlitchSettings: (updates) => set((state) => ({
         settings: { ...state.settings, glitch: { ...state.settings.glitch, ...updates } }
     })),
-    updateMotionSettings: (updates) => set((state) => ({
-        settings: { ...state.settings, motion: { ...state.settings.motion, ...updates } }
-    })),
 
     setOrder: (val) => set({ orderUser: val }),
     setTurbulence: (val) => set({ turbulenceUser: val }),
-    setSeed: (seed) => set({ seed }),
 }));

@@ -7,6 +7,7 @@ import { DEFAULT_FONT, PRESET_FONTS } from '@/lib/fonts/presets';
 import { applyPreset, LOOK_PRESETS } from '@/lib/look/presets';
 import { RGB_SPLIT_MAX } from '@/lib/look/limits';
 import { MAX_COLUMN_PITCH, MIN_COLUMN_PITCH } from '@/lib/vertical/layout';
+import type { RenderSettings } from '@/types/state';
 
 export function ControlPanel() {
     const {
@@ -154,7 +155,7 @@ export function ControlPanel() {
                             <select
                                 id="f-mode"
                                 value={settings.render.textMode || '3D'}
-                                onChange={(e) => updateRenderSettings({ textMode: e.target.value as any })}
+                                onChange={(e) => updateRenderSettings({ textMode: e.target.value as RenderSettings['textMode'] })}
                                 className="field"
                             >
                                 <option value="3D">3D Text (Glitchy, Extruded)</option>
@@ -193,7 +194,7 @@ export function ControlPanel() {
                             <select
                                 id="f-material"
                                 value={settings.render.materialMode}
-                                onChange={(e) => updateRenderSettings({ materialMode: e.target.value as any })}
+                                onChange={(e) => updateRenderSettings({ materialMode: e.target.value as RenderSettings['materialMode'] })}
                                 className="field"
                                 disabled={settings.render.textMode === '2D'}
                             >

@@ -7,25 +7,23 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:demo": "tsc && vite build --mode demo",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@ffmpeg/util": "^0.12.2",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
-    "buffer": "^6.0.3",
     "clsx": "^2.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.576.0",
     "mp4-muxer": "^5.2.2",
-    "opentype.js": "^1.3.4",
     "postprocessing": "^6.38.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -35,6 +33,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^25.3.3",
     "@types/opentype.js": "^1.3.9",
@@ -43,10 +42,13 @@
     "@types/three": "^0.183.1",
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2",
     "vite": "^7.3.1"
   }
 }

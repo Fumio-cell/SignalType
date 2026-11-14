@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { flushSync as domFlushSync } from 'react-dom';
 import { advance, flushSync, invalidate, useStore } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { ShaderMaterial } from 'three';
 import { useAppStore } from '@/store/appStore';
 import { getComposer, setExportStage, useExportMode, type ExportStage } from '@/lib/export/stage';
 import { beginDeterministic, endDeterministic, setFrame, withSeededRandom } from '@/lib/export/frameClock';
 import { atlasSignature, preloadExportAtlas } from '@/lib/export/atlas';
+import { isTroikaText, type TroikaText } from '@/lib/troikaText';
 
 /**
  * Lets the export render at an exact pixel size, independent of the window and of DPR.
@@ -53,7 +55,7 @@ export function ExportBridge() {
         // Text laid out by troika (2D mode) is typeset asynchronously in a worker; wait until it is
         // done so the frame never shows the previous line. Troika only calls a sync() callback when
         // it has work to do, so wait for its 'synccomplete' event instead and only while it is busy.
-        const waitForTroika = async (o: any) => {
+        const waitForTroika = async (o: TroikaText) => {
             for (let i = 0; i < 5; i++) {
                 if (o._needsSync) o.sync();
                 if (!o._isSyncing) return;
@@ -70,8 +72,8 @@ export function ExportBridge() {
         };
         const settleText = async () => {
             const pending: Promise<void>[] = [];
-            store.getState().scene.traverse((o: any) => {
-                if (typeof o.sync === 'function' && 'text' in o) pending.push(waitForTroika(o));
+            store.getState().scene.traverse((o) => {
+                if (isTroikaText(o) && 'text' in o) pending.push(waitForTroika(o));
             });
             if (pending.length) await Promise.all(pending);
         };
@@ -123,9 +125,8 @@ export function ExportBridge() {
                 if (s.gl.domElement.width !== target.w || s.gl.domElement.height !== target.h) applyTarget();
                 // The effect passes keep a clock of their own (the grain pattern moves with it) that runs on from the preview and
                 // starts again whenever the composer rebuilds its passes. Set it from the frame number, so it is the same on every export.
-                const composer: any = getComposer();
-                for (const pass of composer?.passes ?? []) {
-                    const clock = pass.fullscreenMaterial?.uniforms?.time;
+                for (const pass of getComposer()?.passes ?? []) {
+                    const clock = (pass.fullscreenMaterial as ShaderMaterial | undefined)?.uniforms?.time;
                     if (clock) clock.value = seconds;
                 }
                 withSeededRandom(() => advance(seconds, true, s));

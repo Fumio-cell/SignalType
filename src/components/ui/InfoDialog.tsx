@@ -83,17 +83,22 @@ export function InfoDialog({ onClose }: Props) {
                 <h2 id="info-dialog-title" className="control m-0 mb-sp2 text-paper">
                     SignalType
                 </h2>
-                <p className="control m-0 mb-sp4 text-paper-dim">Kinetic typography and typographic interference</p>
+                <p className="control m-0 mb-sp4 text-paper-dim">Text animation driven by an audio file</p>
                 <div id="info-dialog-body">
                     <p className="m-0 mb-sp3 leading-relaxed text-paper">
-                        SignalType reimagines text as kinetic light and geometry. Focused entirely on typography, it
-                        turns inputted words and characters into dynamic 3D elements that react to invisible signals,
-                        audio inputs, and glitch algorithms. It generates animated title sequences, corrupted
-                        letterforms, and abstract typographic posters for digital art and video intros.
+                        Type text, load an audio file, and SignalType draws the text in 3D or flat, horizontal or
+                        vertical. Onsets in the audio change the line. Loudness and beats move the ink bleed, the
+                        depth and the light, and the glitch.
+                    </p>
+                    <p className="m-0 mb-sp3 leading-relaxed text-paper">
+                        It exports an MP4 or a PNG sequence with alpha, at 1080p or 4K. The MP4 has no audio track:
+                        it is an overlay, and your track is already in your timeline.
+                    </p>
+                    <p className="m-0 mb-sp3 leading-relaxed text-paper">
+                        Nothing is uploaded. Your audio, fonts and frames stay in this browser tab.
                     </p>
                     <p className="control m-0 text-paper-dim">
-                        Key features: 3D text rendering, glitch injection, audio-reactive typography, custom font
-                        loading.
+                        Looks: Weight, Ink, Interference. Fonts: bundled, or any TTF or OTF you import.
                     </p>
                 </div>
             </div>

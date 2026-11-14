@@ -1,5 +1,5 @@
 import { GlitchEffect, Effect, EffectAttribute, BlendFunction } from 'postprocessing';
-import { Uniform, Vector4 } from 'three';
+import { Uniform, Vector4, type WebGLRenderer, type WebGLRenderTarget } from 'three';
 import { stageInk } from './stageInk';
 
 /**
@@ -85,11 +85,16 @@ void mainUv(inout vec2 uv) {
 export class BandedGlitchEffect extends GlitchEffect {
     constructor(options: ConstructorParameters<typeof GlitchEffect>[0]) {
         super(options);
-        (this as any).fragmentShader = BANDED_GLITCH_FRAGMENT;
+        this.setFragmentShader(BANDED_GLITCH_FRAGMENT);
         this.uniforms.set('region', new Uniform(new Vector4(0, 0, 0, 0)));
     }
 
-    update(renderer: any, inputBuffer: any, deltaTime: number): void {
+    /** The glitch's own random number for this frame (not in its typings). */
+    private get distortionX(): number {
+        return (this as unknown as { distortion: { x: number } }).distortion.x;
+    }
+
+    update(renderer: WebGLRenderer, inputBuffer: WebGLRenderTarget, deltaTime: number): void {
         super.update(renderer, inputBuffer, deltaTime);
         const region = (this.uniforms.get('region')!.value as Vector4);
         if (!stageInk.valid) {
@@ -99,7 +104,7 @@ export class BandedGlitchEffect extends GlitchEffect {
         // `distortion` is the glitch's own random pair for this frame: x picks which part of the text.
         const height = stageInk.y1 - stageInk.y0;
         const band = height * BAND_FRACTION;
-        const centre = stageInk.y0 + band / 2 + (this as any).distortion.x * (height - band);
+        const centre = stageInk.y0 + band / 2 + this.distortionX * (height - band);
         region.set(stageInk.x0, centre - band / 2, stageInk.x1, centre + band / 2);
     }
 }

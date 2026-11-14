@@ -8,17 +8,28 @@ import { ExportBridge } from './components/canvas/ExportBridge';
 import { useAppStore } from './store/appStore';
 import { importFontFile, initFonts } from './lib/fontLoader';
 import { importRecipe } from './lib/export/recipe';
-import { decodeAudioFile } from './lib/audio/decodeAudioFile';
+import { loadAudioFile } from './lib/audio/player';
 import { Header } from './components/ui/Header';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EXPORT_SIZES, useExportMode, useExportResolution } from './lib/export/stage';
 import { NoticeHost } from './components/NoticeHost';
 import { notify } from './lib/notify';
 
+/** Two facts under the stage: where the sample track is from, and what the MP4 contains. */
+function StageNotes() {
+    const hasAudio = useAppStore(state => state.duration > 0);
+    const isSample = useAppStore(state => state.isSample);
+    return (
+        <div className="note flex shrink-0 flex-wrap justify-between gap-x-sp4 gap-y-sp1 border-t border-line px-sp3 py-sp2">
+            <span>{!hasAudio || isSample ? 'Sample track: "Frequency Dreams" by Bomb Sun' : ''}</span>
+            <span>The MP4 has no audio track. It is an overlay; your track is already in your timeline.</span>
+        </div>
+    );
+}
+
 function App() {
     const [isDragging, setIsDragging] = useState(false);
     const exporting = useExportMode(state => state.active);
-    const setAudio = useAppStore(state => state.setAudio);
     const resolution = useExportResolution(state => state.resolution);
     const frame = EXPORT_SIZES[resolution];
 
@@ -54,12 +65,8 @@ function App() {
             } else if (name.endsWith('.json')) {
                 importRecipe(file);
             } else if (file.type.startsWith('audio/') || name.endsWith('.wav') || name.endsWith('.mp3') || name.endsWith('.aif') || name.endsWith('.aiff') || name.endsWith('.aifc')) {
-                // Read and set audio
-                const arrayBuffer = await file.arrayBuffer();
-                const audioContext = new window.AudioContext();
-                const audioBuffer = await decodeAudioFile(audioContext, arrayBuffer);
-                const url = URL.createObjectURL(file);
-                setAudio(audioBuffer, url);
+                // The same path as the Upload button
+                await loadAudioFile(file);
             } else {
                 notify("Unsupported file format. Drop audio (.wav, .mp3, .aif), a font (.ttf, .otf) or a recipe (.json).", { id: 'drop-unsupported', tone: 'error' });
             }
@@ -67,7 +74,7 @@ function App() {
             console.error("Error handling dropped file:", err);
             notify("Failed to load the file: " + String(err), { id: 'drop-failed', tone: 'error' });
         }
-    }, [setAudio]);
+    }, []);
 
     return (
         <div
@@ -96,7 +103,7 @@ function App() {
                 {/* Stage */}
                 <div className="relative flex min-w-0 flex-1 flex-col border-r border-line">
                     <div className="control pointer-events-none absolute left-sp3 top-sp3 z-10 select-none border border-line bg-ink-panel px-sp2 py-sp1 text-paper-label">
-                        SignalType v2.1
+                        SignalType
                     </div>
 
                     {/* The stage is letterboxed to the export frame: ink around it, ink-stage inside. */}
@@ -125,6 +132,8 @@ function App() {
                             </ErrorBoundary>
                         </div>
                     </div>
+
+                    <StageNotes />
                 </div>
 
                 <ControlPanel />

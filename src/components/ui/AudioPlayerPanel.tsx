@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { Upload, Play, Square } from 'lucide-react';
+import { Upload, Play, Square, Music } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { cn } from '@/lib/utils';
-import { loadAudio, startPlayback, stopPlayback, getCurrentTime } from '@/lib/audio/player';
+import { loadAudioFile, loadSample, startPlayback, stopPlayback, getCurrentTime } from '@/lib/audio/player';
 import { ExportPanel } from '@/components/ui/ExportPanel';
 import { notify } from '@/lib/notify';
 
@@ -45,17 +45,20 @@ export function AudioPlayerPanel() {
         if (!file) return;
 
         try {
-            await loadAudio(file);
-            if (useAppStore.getState().audioBuffer) {
-                import('@/lib/audio/analysis').then(({ startAnalysis }) => {
-                    startAnalysis(useAppStore.getState().audioBuffer!);
-                });
-            }
+            await loadAudioFile(file);
         } catch (err) {
             notify(`Failed to decode audio file (${err instanceof Error ? err.message : String(err)})`, { id: 'audio-decode', tone: 'error' });
         }
 
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleSample = async () => {
+        try {
+            await loadSample();
+        } catch (err) {
+            notify(`Failed to load the sample track (${err instanceof Error ? err.message : String(err)})`, { id: 'sample-load', tone: 'error' });
+        }
     };
 
     const formatTime = (seconds: number) => {
@@ -79,10 +82,20 @@ export function AudioPlayerPanel() {
                     aria-label="Audio file"
                     tabIndex={-1}
                 />
+                {/* Until audio is loaded the sample is the one filled button; after that Export is. */}
+                <button
+                    type="button"
+                    onClick={handleSample}
+                    className={hasAudio ? 'btn' : 'btn-fill'}
+                    title="Load the sample track and play it"
+                >
+                    <Music className="h-4 w-4" aria-hidden="true" />
+                    <span>Try a sample</span>
+                </button>
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className={hasAudio ? 'btn' : 'btn-fill'}
+                    className="btn"
                     title="Upload audio file"
                 >
                     <Upload className="h-4 w-4" aria-hidden="true" />

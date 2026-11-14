@@ -41,16 +41,16 @@ export function PostFX() {
     const inkAmount = useAppStore(state => state.settings.render.ink);
 
     // One glitch effect for the life of the stage; its settings follow the sliders below.
-    const glitch = useMemo(
-        () => new BandedGlitchEffect({
+    const glitch = useMemo(() => {
+        const effect = new BandedGlitchEffect({
             delay: new THREE.Vector2(0.5, 1.5),
             duration: new THREE.Vector2(0.1, 0.4),
             strength: new THREE.Vector2(0, 0),
-            mode: GlitchMode.DISABLED,
             perturbationMap,
-        } as any),
-        [perturbationMap],
-    );
+        });
+        effect.mode = GlitchMode.DISABLED;
+        return effect;
+    }, [perturbationMap]);
     useEffect(() => () => glitch.dispose(), [glitch]);
 
     // INK bleed: the radius follows the loudness of the audio at the current time.
@@ -120,7 +120,7 @@ export function PostFX() {
     );
 
     return (
-        <EffectComposer ref={composerRef as any} autoClear={false}>
+        <EffectComposer ref={composerRef} autoClear={false}>
             {effects}
         </EffectComposer>
     );

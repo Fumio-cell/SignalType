@@ -50,13 +50,6 @@ export interface GlitchSettings {
     grain: number; // noise intensity
 }
 
-export interface MotionSettings {
-    directionDegrees: number; // 0..360
-    spread: number; // 0..1
-    density: number; // mist density
-    speed: number;
-}
-
 export interface AppState {
     audioBuffer: AudioBuffer | null;
     audioUrl: string | null;
@@ -74,11 +67,8 @@ export interface AppState {
     orderUser: number;
     turbulenceUser: number;
 
-    seed: number;
-
     settings: {
         render: RenderSettings;
         glitch: GlitchSettings;
-        motion: MotionSettings;
     };
 }

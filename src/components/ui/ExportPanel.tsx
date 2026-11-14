@@ -57,12 +57,12 @@ export function ExportPanel() {
                 });
                 // Only say so when the length limit actually cut the file.
                 if (DEMO_MODE && duration > DEMO_MAX_SECONDS) setDemoLimited(true);
-            } catch (err: any) {
+            } catch (err) {
                 console.error(err);
                 if (err instanceof ExportUnsupportedError) {
                     notify(err.message, { id: 'export-unsupported', tone: 'error' });
                 } else {
-                    notify(`Export failed: ${err.message}`, { id: 'export-failed', tone: 'error' });
+                    notify(`Export failed: ${err instanceof Error ? err.message : String(err)}`, { id: 'export-failed', tone: 'error' });
                 }
             } finally {
                 setIsExporting(false);
@@ -93,7 +93,7 @@ export function ExportPanel() {
             <select
                 aria-label="Format"
                 value={format}
-                onChange={(e) => setFormat(e.target.value as any)}
+                onChange={(e) => setFormat(e.target.value as 'mp4' | 'zip')}
                 className="field !w-auto !py-sp1"
                 disabled={isExporting}
             >

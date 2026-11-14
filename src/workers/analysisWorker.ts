@@ -155,7 +155,7 @@ self.onmessage = (e: MessageEvent<AnalysisMessage>) => {
         normalize(flux);
         normalize(texture);
 
-        (self as any).postMessage({
+        (self as unknown as Worker).postMessage({
             type: 'result',
             onsetStrength,
             flux,

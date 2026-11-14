@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, type ComponentProps } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text, Text3D, Center } from '@react-three/drei';
 import { useAppStore } from '@/store/appStore';
@@ -10,11 +10,14 @@ import { cssColor } from '@/lib/tokens';
 import { audioReach, beatEnvelope } from '@/lib/audio/levels';
 import { stageInk } from '@/lib/look/stageInk';
 import { useExportMode } from '@/lib/export/stage';
+import { isTroikaText } from '@/lib/troikaText';
 import { SDF_EXPORT, SDF_PREVIEW } from '@/lib/export/atlas';
 
 // 2D text: troika downloads fallback fonts from cdn.jsdelivr.net for any glyph its font lacks. Nothing
 // here ever hands it such a character: text is split between the chosen font and the bundled Zen Kaku
 // Gothic New (src/lib/fontLoader.ts decides which font has which character), and what neither has is left out.
+
+type Text3DFont = ComponentProps<typeof Text3D>['font'];
 
 /** Text3D's size 1 is 1000 typeface units = 0.72 em, so one em is 100/72 of the size. */
 const EM_PER_SIZE_3D = 100 / 72;
@@ -75,25 +78,19 @@ export function GlitchTextScene() {
             }
 
             // Apply opacity without resetting needsUpdate constantly
-            textRef.current.traverse((child: any) => {
-                // For Text3D meshes
-                if (child.isMesh && child.material) {
-                    const mats = Array.isArray(child.material) ? child.material : [child.material];
-                    mats.forEach((mat: THREE.Material) => {
+            textRef.current.traverse((child) => {
+                // 3D text meshes, and the meshes troika (2D) draws with
+                if (child instanceof THREE.Mesh && child.material) {
+                    const mats: THREE.Material[] = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach((mat) => {
                         mat.transparent = true;
                         // Use direct assignment for targetOpacity since it's already calculated smoothly over time
                         mat.opacity = targetOpacity;
                         // Needsupdate only if explicitly changing material types, usually changing opacity works without it
                     });
                 }
-                // For Troika Text (2D)
-                if (child.textRenderInfo !== undefined || child.fillOpacity !== undefined) {
-                    child.fillOpacity = targetOpacity;
-                    if (child.material) {
-                        child.material.opacity = targetOpacity;
-                        child.material.transparent = true;
-                    }
-                }
+                // Troika text (2D) has an opacity of its own as well
+                if (isTroikaText(child)) child.fillOpacity = targetOpacity;
             });
             textRef.current.scale.set(1, 1, 1); // Reset scale in case it was shrunk before
 
@@ -113,12 +110,12 @@ export function GlitchTextScene() {
             // taller than the ink) and the geometry of 3D text.
             textRef.current.updateWorldMatrix(true, true);
             inkBox.makeEmpty();
-            textRef.current.traverse((o: any) => {
-                if (typeof o.sync === 'function') {
+            textRef.current.traverse((o) => {
+                if (isTroikaText(o)) {
                     const vb = o.textRenderInfo?.visibleBounds;
                     if (!vb) return;
                     for (let i = 0; i < 4; i++) inkBox.expandByPoint(inkCorner.set(i & 1 ? vb[2] : vb[0], i & 2 ? vb[3] : vb[1], 0).applyMatrix4(o.matrixWorld));
-                } else if (o.isMesh && o.geometry) {
+                } else if (o instanceof THREE.Mesh && o.geometry) {
                     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
                     if (o.geometry.boundingBox) inkBox.union(inkCorner0.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld));
                 }
@@ -255,7 +252,7 @@ export function GlitchTextScene() {
                                             </Text>
                                         ) : (
                                             <Text3D
-                                                font={face.data as any}
+                                                font={face.data as unknown as Text3DFont}
                                                 size={render.fontSize}
                                                 height={extrusion}
                                                 curveSegments={12}
@@ -293,7 +290,7 @@ export function GlitchTextScene() {
                         ) : (
                             primary && (
                                 <Text3D
-                                    font={primary.data as any}
+                                    font={primary.data as unknown as Text3DFont}
                                     size={render.fontSize}
                                     height={extrusion}
                                     curveSegments={12}
