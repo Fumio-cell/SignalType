@@ -7,8 +7,10 @@ import * as THREE from 'three';
 import { frameRandom, getExportTime, isExportActive } from '@/lib/export/frameClock';
 import { layoutHorizontal, layoutVertical, MAX_COLUMN_PITCH, MIN_COLUMN_PITCH, type Drawable, type Layout, type Lookup } from '@/lib/vertical/layout';
 import { cssColor } from '@/lib/tokens';
-import { beatEnvelope } from '@/lib/audio/levels';
+import { audioReach, beatEnvelope } from '@/lib/audio/levels';
 import { stageInk } from '@/lib/look/stageInk';
+import { useExportMode } from '@/lib/export/stage';
+import { SDF_EXPORT, SDF_PREVIEW } from '@/lib/export/atlas';
 
 // 2D text: troika downloads fallback fonts from cdn.jsdelivr.net for any glyph its font lacks. Nothing
 // here ever hands it such a character: text is split between the chosen font and the bundled Zen Kaku
@@ -30,8 +32,9 @@ function fontDataId(data: object | null): number {
 
 export function GlitchTextScene() {
     const render = useAppStore(state => state.settings.render);
+    // The size of the SDF glyphs of 2D text is set outright: the preview and an export each have their own atlas.
+    const sdfGlyphSize = useExportMode(state => state.active) ? SDF_EXPORT : SDF_PREVIEW;
     const currentLineIndex = useAppStore(state => state.currentLineIndex);
-    const lastSequenceTime = useAppStore(state => state.lastSequenceTime);
     // The float/shake animation moves this group, which sits outside <Center>: Center measures its
     // children's world transform, so animating the text itself would bake the animation phase of the
     // moment into the centering offset.
@@ -53,7 +56,7 @@ export function GlitchTextScene() {
             const t = isExportActive() ? getExportTime() : state.clock.getElapsedTime();
 
             // Calculate random vertical shake based on setting and audio onset
-            const shakeAmt = glitch.verticalShake * (1.0 + features.onset * 2.0);
+            const shakeAmt = glitch.verticalShake * (1.0 + audioReach(glitch.burstGain) * features.onset * 2.0);
             const shakeY = (frameRandom() - 0.5) * shakeAmt;
 
             // Subtle floating + shake, controlled by baseFloat
@@ -63,22 +66,12 @@ export function GlitchTextScene() {
             // Transition logic for appearance duration
             const currentTime = useAppStore.getState().currentTime;
 
+            // A line stays until the next switch, which the schedule knows in advance (src/lib/audio/schedule.ts).
+            // It fades over the last fifth of the minimum stay before the switch.
             let targetOpacity = 1;
             if (render.sequenceMode) {
-                const timeSinceBeat = currentTime - lastSequenceTime;
-
-                // Keep fully visible for the first 80% of the duration
-                const visibleDuration = render.sequenceDuration * 0.8;
-
-                if (timeSinceBeat >= render.sequenceDuration) {
-                    targetOpacity = 0; // Next beat hasn't triggered yet, stay hidden
-                } else if (timeSinceBeat >= visibleDuration) {
-                    // Fade out during the last 20% of the duration
-                    const fadeProgress = (timeSinceBeat - visibleDuration) / (render.sequenceDuration - visibleDuration);
-                    targetOpacity = Math.max(0, 1 - fadeProgress);
-                } else {
-                    targetOpacity = 1; // Fully visible
-                }
+                const fade = 0.2 * Math.max(0.1, render.sequenceDuration);
+                targetOpacity = Math.min(1, Math.max(0, (useAppStore.getState().nextSequenceTime - currentTime) / fade));
             }
 
             // Apply opacity without resetting needsUpdate constantly
@@ -256,7 +249,7 @@ export function GlitchTextScene() {
                                 >
                                     <group position={[p.ox * emWorld, p.oy * emWorld, 0]}>
                                         {is2D ? (
-                                            <Text font={face.url} fontSize={emWorld} anchorX={0} anchorY="bottom-baseline">
+                                            <Text font={face.url} fontSize={emWorld} sdfGlyphSize={sdfGlyphSize} anchorX={0} anchorY="bottom-baseline">
                                                 {p.text}
                                                 {materialContent}
                                             </Text>
@@ -288,6 +281,7 @@ export function GlitchTextScene() {
                                 <Text
                                     font={primary.url}
                                     fontSize={render.fontSize}
+                                    sdfGlyphSize={sdfGlyphSize}
                                     anchorX="center"
                                     anchorY="middle"
                                     textAlign="center"

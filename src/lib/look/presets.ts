@@ -28,8 +28,6 @@ const still: GlitchSettings = {
     verticalShake: 0,
     baseFloat: 0.1,
     grain: 0,
-    stutterProb: 0.3,
-    stutterFrames: 5,
 };
 
 export const LOOK_PRESETS: LookPreset[] = [
@@ -67,8 +65,6 @@ export const LOOK_PRESETS: LookPreset[] = [
             verticalShake: 0.1,
             baseFloat: 0.1,
             grain: 0.1,
-            stutterProb: 0.3,
-            stutterFrames: 5,
         },
         order: 0.8,
         turbulence: 0.2,

@@ -44,9 +44,14 @@ export function fullSizeOf(ch: string): string | undefined {
     return SMALL_TO_FULL[ch];
 }
 
-/** Half-width digits and Latin letters: the characters that form runs (tate-chu-yoko / rotated runs). */
-export function isAsciiAlnum(ch: string): boolean {
-    return /^[0-9A-Za-z]$/.test(ch);
+/** Half-width digits: a run of 1 is upright, of 2 is tate-chu-yoko, of 3 or more is set one digit per cell, upright. */
+export function isAsciiDigit(ch: string): boolean {
+    return /^[0-9]$/.test(ch);
+}
+
+/** Latin letters: a run of 1-2 is tate-chu-yoko, of 3 or more is turned a quarter clockwise as a whole. */
+export function isAsciiLetter(ch: string): boolean {
+    return /^[A-Za-z]$/.test(ch);
 }
 
 export function isAscii(ch: string): boolean {

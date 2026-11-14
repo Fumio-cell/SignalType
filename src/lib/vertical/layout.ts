@@ -1,4 +1,4 @@
-import { isAscii, isAsciiAlnum, isRotatedChar, isShiftedPunctuation, fullSizeOf } from './rules';
+import { isAscii, isAsciiDigit, isAsciiLetter, isRotatedChar, isShiftedPunctuation, fullSizeOf } from './rules';
 
 /**
  * Typesetting for text that is drawn one piece at a time (vertical writing, and any text that needs
@@ -114,11 +114,13 @@ export function layoutVertical(lines: string[], lookup: Lookup, emC: EmCenters, 
                 continue;
             }
 
-            if (isAsciiAlnum(ch)) {
-                // A run of half-width digits / Latin letters in one font.
+            if (isAsciiDigit(ch) || isAsciiLetter(ch)) {
+                // A run of half-width digits, or of Latin letters, in one font. A digit never joins a letter run
+                // or the other way round: COVID19 is the run COVID and the run 19.
+                const sameClass = isAsciiDigit(ch) ? isAsciiDigit : isAsciiLetter;
                 let j = i;
                 let length = 0;
-                while (j < chars.length && isAsciiAlnum(chars[j])) {
+                while (j < chars.length && sameClass(chars[j])) {
                     const gj = lookup(chars[j]);
                     if (!gj || gj.slot !== g.slot) break;
                     length += gj.m.adv;
@@ -126,9 +128,24 @@ export function layoutVertical(lines: string[], lookup: Lookup, emC: EmCenters, 
                 }
                 const run = chars.slice(i, j).join('');
                 const count = j - i;
+                const digits = isAsciiDigit(ch);
+                const start = i;
                 i = j;
-                if (count <= 2) {
-                    // Tate-chu-yoko: upright, side by side, inside one cell (narrowed if wider than the cell).
+                if (digits && count >= 3) {
+                    // Three or more digits: one digit per cell, each upright (2022 takes four cells, never turned).
+                    for (let k = start; k < j; k++) {
+                        const d = lookup(chars[k])!;
+                        pieces.push({
+                            text: chars[k], slot: d.slot,
+                            x: cx, y: -(cursor + 0.5),
+                            rot: 0, scale: 1,
+                            ox: -d.m.adv / 2, oy: -emC[d.slot],
+                        });
+                        cursor += 1;
+                    }
+                } else if (count <= 2) {
+                    // One digit or letter upright in its cell; two side by side in one cell (tate-chu-yoko),
+                    // narrowed if they are wider than the cell.
                     pieces.push({
                         text: run, slot: g.slot,
                         x: cx, y: -(cursor + 0.5),
@@ -137,7 +154,7 @@ export function layoutVertical(lines: string[], lookup: Lookup, emC: EmCenters, 
                     });
                     cursor += 1;
                 } else {
-                    // The whole run turned a quarter clockwise: one vertical bar.
+                    // Three or more letters: the whole run turned a quarter clockwise, one vertical bar.
                     pieces.push({
                         text: run, slot: g.slot,
                         x: cx, y: -(cursor + length / 2),

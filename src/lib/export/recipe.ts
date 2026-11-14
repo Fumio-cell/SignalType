@@ -19,7 +19,6 @@ export interface AppRecipe {
         materialMode: 'standard' | 'metallic';
         glitch: {
             intensityBase: number;
-            stutterProb: number;
             burstGain: number;
             slices: number;
             rgbSplit: number;

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useAppStore } from '@/store/appStore';
 import { getComposer, setExportStage, useExportMode, type ExportStage } from '@/lib/export/stage';
 import { beginDeterministic, endDeterministic, setFrame, withSeededRandom } from '@/lib/export/frameClock';
+import { atlasSignature, preloadExportAtlas } from '@/lib/export/atlas';
 
 /**
  * Lets the export render at an exact pixel size, independent of the window and of DPR.
@@ -75,6 +76,19 @@ export function ExportBridge() {
             if (pending.length) await Promise.all(pending);
         };
 
+        // The export may start only once the glyph atlas has stopped changing: the same signature on two checks in a row.
+        const settleAtlas = async () => {
+            let previous = '';
+            let stable = 0;
+            for (let i = 0; i < 40 && stable < 2; i++) {
+                await settleText();
+                await tick();
+                const now = atlasSignature(store.getState().scene);
+                stable = i > 0 && now === previous ? stable + 1 : 0;
+                previous = now;
+            }
+        };
+
         const stage: ExportStage = {
             async begin(width, height) {
                 const s = store.getState();
@@ -84,6 +98,8 @@ export function ExportBridge() {
                     objectFit: s.gl.domElement.style.objectFit,
                 };
                 beginDeterministic();
+                // 2D text: the export's own glyph atlas, filled with every glyph of the text in a fixed order.
+                await preloadExportAtlas();
                 // The Canvas props say 'never' / dpr 1 while exporting, so it cannot undo what follows.
                 domFlushSync(() => useExportMode.setState({ active: true }));
                 s.setFrameloop('never');
@@ -94,6 +110,7 @@ export function ExportBridge() {
                 target = { w: width, h: height };
                 applyTarget();
                 store.getState().gl.domElement.style.objectFit = 'contain';
+                await settleAtlas();
             },
 
             async renderFrame(frame, fps) {
@@ -104,6 +121,13 @@ export function ExportBridge() {
                 const s = store.getState();
                 // Anything that re-measured the stage meanwhile (a Canvas re-render) is undone here.
                 if (s.gl.domElement.width !== target.w || s.gl.domElement.height !== target.h) applyTarget();
+                // The effect passes keep a clock of their own (the grain pattern moves with it) that runs on from the preview and
+                // starts again whenever the composer rebuilds its passes. Set it from the frame number, so it is the same on every export.
+                const composer: any = getComposer();
+                for (const pass of composer?.passes ?? []) {
+                    const clock = pass.fullscreenMaterial?.uniforms?.time;
+                    if (clock) clock.value = seconds;
+                }
                 withSeededRandom(() => advance(seconds, true, s));
                 return s.gl.domElement;
             },

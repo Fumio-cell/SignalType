@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { EffectComposer, Noise, ChromaticAberration } from '@react-three/postprocessing';
 import { BlendFunction, GlitchMode } from 'postprocessing';
 import * as THREE from 'three';
@@ -9,7 +8,7 @@ import { mulberry32 } from '@/lib/export/frameClock';
 import { registerComposer, type ResizableComposer } from '@/lib/export/stage';
 import { BandedGlitchEffect, InkEffect } from '@/lib/look/effects';
 import { RGB_SPLIT_MAX } from '@/lib/look/limits';
-import { loudness } from '@/lib/audio/levels';
+import { audioReach, loudness } from '@/lib/audio/levels';
 
 // `columns` is a fraction of the UV range (0..1) in the postprocessing GlitchEffect;
 // the library default is 0.05. Values >= 0.5 make the shader's range test true for
@@ -59,7 +58,10 @@ export function PostFX() {
     useEffect(() => () => ink.dispose(), [ink]);
     ink.radiusSource = () => {
         const st = useAppStore.getState();
-        const level = st.audioBuffer ? loudness(st.audioBuffer, st.currentTime) : 0.5;
+        // Loudness moves the bleed around its middle; burst gain 0 leaves it at the middle, as with no audio.
+        const level = st.audioBuffer
+            ? Math.min(1, Math.max(0, 0.5 + audioReach(st.settings.glitch.burstGain) * (loudness(st.audioBuffer, st.currentTime) - 0.5)))
+            : 0.5;
         const pixelsAt1080 = st.settings.render.ink * (3 + 12 * level);
         return pixelsAt1080 / 1080;
     };
@@ -102,34 +104,24 @@ export function PostFX() {
         glitch.columns = glitchColumns;
     }, [glitch, dynamicStrength, glitchActive, features.blendedOrder, glitchColumns]);
 
-    // Frame stutter effect based on onset probability
-    useFrame(() => {
-        const r = Math.random();
-        // If we have a strong onset and high turbulence, maybe we skip rendering to stutter
-        const stutterThreshold = features.onset * features.blendedTurbulence * settings.stutterProb;
+    const noiseOpacity = settings.grain > 0 ? settings.grain + audioReach(settings.burstGain) * features.flatness * 0.5 : 0;
 
-        // Simplistic stutter: just don't clear/render this frame sometimes
-        // (A real stutter effect might need a custom WebGLRenderTarget holding previous frames)
-        if (r < stutterThreshold) {
-            // Skip render (cheap stutter)
-            // Note: this only works if autoClear is false, or we use a custom pass
-            // For standard R3F, we rely on the Glitch pass continuous mode for now
-        }
-    });
+    // The composer rebuilds its passes whenever its children are new objects, and a rebuilt Noise pass starts its clock
+    // again. Built only when something that shows in the picture changes, so a feature that nothing uses (at burst gain 0
+    // none of them is) cannot reach the picture through a re-render.
+    const effects = useMemo(
+        () => [
+            inkAmount > 0 ? <primitive key="ink" object={ink} dispose={null} /> : <group key="ink" />,
+            <primitive key="glitch" object={glitch} dispose={null} />,
+            <ChromaticAberration key="chromatic" blendFunction={BlendFunction.NORMAL} offset={chromaticOffset} />,
+            <Noise key="noise" premultiply blendFunction={BlendFunction.ADD} opacity={noiseOpacity} />,
+        ],
+        [inkAmount > 0, ink, glitch, chromaticOffset, noiseOpacity],
+    );
 
     return (
         <EffectComposer ref={composerRef as any} autoClear={false}>
-            {inkAmount > 0 ? <primitive object={ink} dispose={null} /> : <></>}
-            <primitive object={glitch} dispose={null} />
-            <ChromaticAberration
-                blendFunction={BlendFunction.NORMAL}
-                offset={chromaticOffset}
-            />
-            <Noise
-                premultiply
-                blendFunction={BlendFunction.ADD}
-                opacity={settings.grain > 0 ? settings.grain + features.flatness * 0.5 : 0}
-            />
+            {effects}
         </EffectComposer>
     );
 }

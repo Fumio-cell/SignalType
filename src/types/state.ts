@@ -35,8 +35,8 @@ export interface RenderSettings {
     bevelEnabled: boolean;
     materialMode: 'standard' | 'metallic';
     sequenceMode: boolean; // Enable audio-driven line sequence
-    sequenceThreshold: number; // Onset sensitivity
-    sequenceDuration: number; // How long text stays visible
+    sequenceThreshold: number; // The lowest onset (0..1, the strongest onset of the file is 1) that changes the line
+    sequenceDuration: number; // The least time a line stays on, in seconds
 }
 
 export interface GlitchSettings {
@@ -48,8 +48,6 @@ export interface GlitchSettings {
     verticalShake: number; // normal vertical shaking intensity
     baseFloat: number; // amplitude of the idle floating animation
     grain: number; // noise intensity
-    stutterProb: number; // probability of frame hold on onset
-    stutterFrames: number; // max frames to hold
 }
 
 export interface MotionSettings {

@@ -271,7 +271,7 @@ export function ControlPanel() {
 
                             <div className="flex flex-col gap-sp1">
                                 <div className="flex justify-between">
-                                    <label htmlFor="f-seqdur" className="control text-paper-label">Text duration (s)</label>
+                                    <label htmlFor="f-seqdur" className="control text-paper-label">Minimum stay (s)</label>
                                     <output htmlFor="f-seqdur" className="control text-paper-label">{settings.render.sequenceDuration?.toFixed(1) || '0.8'}s</output>
                                 </div>
                                 <input
@@ -282,8 +282,24 @@ export function ControlPanel() {
                                     onChange={(e) => updateRenderSettings({ sequenceDuration: parseFloat(e.target.value) })}
                                     disabled={!settings.render.sequenceMode}
                                 />
+                            </div>
+
+                            <div className="flex flex-col gap-sp1">
+                                <div className="flex justify-between">
+                                    <label htmlFor="f-seqthr" className="control text-paper-label">Onset threshold</label>
+                                    <output htmlFor="f-seqthr" className="control text-paper-label">{settings.render.sequenceThreshold.toFixed(2)}</output>
+                                </div>
+                                <input
+                                    id="f-seqthr"
+                                    type="range"
+                                    min="0.05" max="0.95" step="0.05"
+                                    value={settings.render.sequenceThreshold}
+                                    onChange={(e) => updateRenderSettings({ sequenceThreshold: parseFloat(e.target.value) })}
+                                    disabled={!settings.render.sequenceMode}
+                                />
                                 <p className="note m-0">
-                                    Displays each line for this duration, fading out in the last 20%. Audio dynamics only affect Glitch effects.
+                                    The next line comes on the first onset above the threshold once the minimum stay is over, or after three times the minimum stay if none comes.
+                                    Burst gain scales how far the audio moves the picture: the bleed of Ink, the depth and light of Weight, the glitch, and order and turbulence around their sliders.
                                 </p>
                             </div>
                         </div>

@@ -6,8 +6,10 @@ import { DEFAULT_COLUMN_PITCH } from '../lib/vertical/layout';
 interface AppStore extends AppState {
     currentLineIndex: number;
     lastSequenceTime: number;
+    nextSequenceTime: number;
     setCurrentLineIndex: (index: number) => void;
     setLastSequenceTime: (time: number) => void;
+    setSequenceState: (index: number, last: number, next: number) => void;
     setAudio: (buffer: AudioBuffer, url: string) => void;
     setPlaying: (playing: boolean) => void;
     setCurrentTime: (time: number) => void;
@@ -49,8 +51,6 @@ const initialGlitch: GlitchSettings = {
     verticalShake: 0,
     baseFloat: 0.1,
     grain: 0,
-    stutterProb: 0.3,
-    stutterFrames: 5,
 };
 
 const initialMotion: MotionSettings = {
@@ -78,6 +78,7 @@ export const useAppStore = create<AppStore>((set) => ({
 
     currentLineIndex: 0,
     lastSequenceTime: 0, // Set to 0 so it's visible initially before the first beat
+    nextSequenceTime: 0,
 
     settings: {
         render: initialRender,
@@ -85,11 +86,17 @@ export const useAppStore = create<AppStore>((set) => ({
         motion: initialMotion,
     },
 
-    setAudio: (buffer, url) => set({ audioBuffer: buffer, audioUrl: url, duration: buffer.duration }),
+    // A new file drops the analysis of the old one at once; the envelopes of the new file arrive a moment later.
+    setAudio: (buffer, url) => set({
+        audioBuffer: buffer, audioUrl: url, duration: buffer.duration,
+        onsetStrength: null, flux: null, flatness: null, texture: null,
+        currentLineIndex: 0, lastSequenceTime: 0, nextSequenceTime: 0,
+    }),
     setPlaying: (playing) => set({ isPlaying: playing }),
     setCurrentTime: (time) => set({ currentTime: time }),
     setCurrentLineIndex: (index) => set({ currentLineIndex: index }),
     setLastSequenceTime: (time) => set({ lastSequenceTime: time }),
+    setSequenceState: (index, last, next) => set({ currentLineIndex: index, lastSequenceTime: last, nextSequenceTime: next }),
     setAnalysisData: (data) => set({ ...data }),
 
     updateRenderSettings: (updates) => set((state) => ({
