@@ -17,8 +17,11 @@ export function ControlPanel() {
         orderUser,
         setOrder,
         turbulenceUser,
-        setTurbulence
+        setTurbulence,
+        currentLineIndex,
     } = useAppStore();
+    // Which line the sequence is on, when it is on and there is more than one.
+    const lineCount = settings.render.text.split('\n').filter((line) => line.trim().length > 0).length;
     const fontBusy = useFontStatus(state => state.busy);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fontInputRef = useRef<HTMLInputElement>(null);
@@ -269,6 +272,9 @@ export function ControlPanel() {
                                     className="switch"
                                 />
                             </div>
+                            {settings.render.sequenceMode && lineCount > 1 && (
+                                <p className="control m-0 text-paper">Line {(currentLineIndex % lineCount) + 1} / {lineCount}</p>
+                            )}
 
                             <div className="flex flex-col gap-sp1">
                                 <div className="flex justify-between">

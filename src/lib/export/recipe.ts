@@ -11,6 +11,10 @@ export interface AppRecipe {
         font: string;
         vertical?: boolean;
         /** The look last chosen, ink bleed and column pitch (recipes from before ST-6 have none of these). */
+        /** Auto sequence mode, minimum stay and onset threshold (recipes from before ST-10 have none: the current values stay). */
+        sequenceMode?: boolean;
+        sequenceDuration?: number;
+        sequenceThreshold?: number;
         preset?: 'weight' | 'ink' | 'interference';
         ink?: number;
         columnPitch?: number;
@@ -60,6 +64,9 @@ export function exportRecipe() {
             preset: state.settings.render.preset,
             ink: state.settings.render.ink,
             columnPitch: state.settings.render.columnPitch,
+            sequenceMode: state.settings.render.sequenceMode,
+            sequenceDuration: state.settings.render.sequenceDuration,
+            sequenceThreshold: state.settings.render.sequenceThreshold,
             fontSize: state.settings.render.fontSize,
             bevelEnabled: state.settings.render.bevelEnabled,
             materialMode: state.settings.render.materialMode,
@@ -96,6 +103,9 @@ export function importRecipe(file: File) {
                 ...(recipe.settings.preset ? { preset: recipe.settings.preset } : {}),
                 ...(typeof recipe.settings.ink === 'number' ? { ink: recipe.settings.ink } : {}),
                 ...(typeof recipe.settings.columnPitch === 'number' ? { columnPitch: recipe.settings.columnPitch } : {}),
+                ...(typeof recipe.settings.sequenceMode === 'boolean' ? { sequenceMode: recipe.settings.sequenceMode } : {}),
+                ...(typeof recipe.settings.sequenceDuration === 'number' ? { sequenceDuration: recipe.settings.sequenceDuration } : {}),
+                ...(typeof recipe.settings.sequenceThreshold === 'number' ? { sequenceThreshold: recipe.settings.sequenceThreshold } : {}),
                 fontSize: recipe.settings.fontSize,
                 bevelEnabled: recipe.settings.bevelEnabled,
                 materialMode: recipe.settings.materialMode === 'standard' ? 'standard' : 'metallic'

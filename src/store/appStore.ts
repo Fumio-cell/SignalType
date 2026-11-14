@@ -36,7 +36,8 @@ const initialRender: RenderSettings = {
     fontSize: 1.0,
     bevelEnabled: true,
     materialMode: 'standard',
-    sequenceMode: true,
+    // Off: every line is on screen. On, one line shows at a time and the audio changes it, which hides what was typed.
+    sequenceMode: false,
     sequenceThreshold: 0.6,
     sequenceDuration: 0.8
 };
