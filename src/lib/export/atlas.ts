@@ -1,4 +1,4 @@
-import { preloadFont } from 'troika-three-text';
+import { preloadFont, resetSDFAtlases } from 'troika-three-text';
 import type { Object3D } from 'three';
 import { useAppStore } from '@/store/appStore';
 import { isTroikaText } from '@/lib/troikaText';
@@ -9,9 +9,9 @@ import { isTroikaText } from '@/lib/troikaText';
  * how big the texture is, changes the pixels at the edge of a stroke by a few levels. So the slot order has to
  * be a function of the project, not of what happened to be on screen before.
  *
- * The preview draws at SDF_PREVIEW. An export draws at its own size, SDF_EXPORT: a separate atlas that is
- * empty when the first export of a session starts. exportBegin() fills it with every glyph of the whole text
- * (all lines, both fonts), sorted by font and code point, before the first frame.
+ * The preview draws at SDF_PREVIEW. An export draws at its own size, SDF_EXPORT: a separate atlas that
+ * preloadExportAtlas() empties (resetSDFAtlases(), which vite.config.ts adds to troika) and fills with every glyph
+ * of the whole text (all lines, both fonts), sorted by font and code point, before the first frame.
  */
 export const SDF_PREVIEW = 64;
 export const SDF_EXPORT = 128;
@@ -37,6 +37,8 @@ function glyphsByFont(): { font: string; characters: string[] }[] {
 /** Put the glyphs of the whole text into the export atlas, in a fixed order. 3D text has no atlas. */
 export async function preloadExportAtlas(): Promise<void> {
     if (useAppStore.getState().settings.render.textMode !== '2D') return;
+    // Every export starts from an empty atlas, so a glyph's slot is the same whatever was exported or shown before.
+    resetSDFAtlases();
     for (const { font, characters } of glyphsByFont()) {
         await new Promise<void>((resolve) => preloadFont({ font, characters, sdfGlyphSize: SDF_EXPORT }, () => resolve()));
     }
