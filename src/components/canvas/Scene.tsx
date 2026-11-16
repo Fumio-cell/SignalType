@@ -19,6 +19,17 @@ import { SDF_EXPORT, SDF_PREVIEW } from '@/lib/export/atlas';
 
 type Text3DFont = ComponentProps<typeof Text3D>['font'];
 
+/**
+ * How the WEIGHT look answers a beat (beat = the beat envelope at the current time x the Audio burst gain, 0 at gain 0).
+ * Each is a function of that one number, so it is the same on every export. The pulse is a scale on a group of its own
+ * (inside the animated one), so it multiplies whatever size is in effect, automated or not.
+ */
+const KEY_LIGHT = 1.5; // intensity of the directional light with no beat
+const WEIGHT_PULSE = 0.06; // the whole text grows by this much per unit of beat (it comes toward the camera)
+const WEIGHT_DEPTH = 0.6; // extra growth in depth per unit of beat
+const WEIGHT_SWAY = 0.22; // radians of turn about the Y axis per unit of beat, so the extruded side shows
+const WEIGHT_LIGHT = 1.6; // extra light intensity per unit of beat (the angle swings as well)
+
 /** Text3D's size 1 is 1000 typeface units = 0.72 em, so one em is 100/72 of the size. */
 const EM_PER_SIZE_3D = 100 / 72;
 
@@ -98,11 +109,16 @@ export function GlitchTextScene() {
             // the existing "Audio burst gain" slider is how far it reaches.
             const st = useAppStore.getState();
             const beat = render.preset === 'weight' ? beatEnvelope(st.onsetStrength, st.audioBuffer, currentTime) * glitch.burstGain : 0;
-            if (depthRef.current) depthRef.current.scale.z = 1 + 0.6 * beat;
+            if (depthRef.current) {
+                const pulse = 1 + WEIGHT_PULSE * beat;
+                depthRef.current.scale.set(pulse, pulse, pulse * (1 + WEIGHT_DEPTH * beat));
+                depthRef.current.rotation.y = WEIGHT_SWAY * beat;
+            }
             if (lightRef.current) {
                 const angle = Math.PI / 4 + 0.5 * beat;
                 const reach = 10 * Math.SQRT2;
                 lightRef.current.position.set(reach * Math.cos(angle), reach * Math.sin(angle), 5);
+                lightRef.current.intensity = KEY_LIGHT * (1 + WEIGHT_LIGHT * beat);
             }
 
             // Where the text is in the frame, for the effects that must stay on it.
@@ -227,7 +243,7 @@ export function GlitchTextScene() {
     return (
         <group>
             <ambientLight intensity={0.5} />
-            <directionalLight ref={lightRef} position={[10, 10, 5]} intensity={1.5} />
+            <directionalLight ref={lightRef} position={[10, 10, 5]} intensity={KEY_LIGHT} />
 
             <group ref={textRef}>
                 <group ref={depthRef}>

@@ -27,6 +27,8 @@ export function AudioPlayerPanel() {
                     const t = getCurrentTime();
                     setCurrentTime(t);
                     if (t >= duration && duration > 0) {
+                        // The track has ended: playback stops and recording is no longer armed.
+                        useAutomation.getState().setArmed(false);
                         setPlaying(false);
                         setCurrentTime(0);
                         return;
@@ -44,6 +46,16 @@ export function AudioPlayerPanel() {
             if (timeReqRef.current) cancelAnimationFrame(timeReqRef.current);
         };
     }, [isPlaying, duration, setCurrentTime, setPlaying]);
+
+    // Arming starts the track from the current position (punch-in from the middle works the same). Disarming by hand leaves it playing.
+    const toggleRecord = () => {
+        if (armed) {
+            setArmed(false);
+            return;
+        }
+        setArmed(true);
+        if (!useAppStore.getState().isPlaying) setPlaying(true);
+    };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -107,6 +119,21 @@ export function AudioPlayerPanel() {
                     <span>Upload Audio</span>
                 </button>
 
+                {/* Record: armed, the knobs that can be automated are recorded while the track plays, and arming starts the track from where it is.
+                    Signal-red is the colour of recording. It needs audio. */}
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={armed}
+                    disabled={!hasAudio}
+                    onClick={toggleRecord}
+                    className={cn('btn shrink-0 whitespace-nowrap', armed && 'border-signal-red')}
+                    title="Arm recording and start the track: moving Ink bleed, Size, Column pitch, Audio burst gain, Base intensity, RGB split spread, Vertical shake or Ambient float records it. Disarming leaves the track playing."
+                >
+                    <span className={cn('h-2 w-2 border', armed ? 'border-signal-red bg-signal-red' : 'border-paper-label')} aria-hidden="true" />
+                    Record
+                </button>
+
                 {audioUrl && (
                     <div className="flex min-w-0 flex-1 items-center gap-sp3">
                         <button
@@ -116,18 +143,6 @@ export function AudioPlayerPanel() {
                             aria-label={isPlaying ? 'Stop' : 'Play'}
                         >
                             {isPlaying ? <Square className="h-4 w-4" fill="currentColor" aria-hidden="true" /> : <Play className="h-4 w-4" fill="currentColor" aria-hidden="true" />}
-                        </button>
-                        {/* Record: armed, the knobs that can be automated are recorded while the track plays. Signal-red is the colour of recording. */}
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={armed}
-                            onClick={() => setArmed(!armed)}
-                            className={cn('btn shrink-0 whitespace-nowrap', armed && 'border-signal-red')}
-                            title="Arm recording: while the track plays, moving Ink bleed, Size, Column pitch, Audio burst gain, Base intensity, RGB split spread, Vertical shake or Ambient float records it"
-                        >
-                            <span className={cn('h-2 w-2 border', armed ? 'border-signal-red bg-signal-red' : 'border-paper-label')} aria-hidden="true" />
-                            Record
                         </button>
                         {hasAutomation && (
                             <button type="button" className="btn shrink-0 whitespace-nowrap" onClick={clearAllAutomation} title="Remove the automation of every knob">
