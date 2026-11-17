@@ -12,6 +12,9 @@ import { AutoMark } from '@/components/ui/AutoMark';
 import { useAutomation, hasCurve } from '@/lib/automation/store';
 import { recordChange } from '@/lib/automation/engine';
 import { PARAM_BY_ID } from '@/lib/automation/params';
+import { computeFit } from '@/lib/look/fit';
+import { notify } from '@/lib/notify';
+import { useExportMode } from '@/lib/export/stage';
 import type { AutomationParamId } from '@/lib/automation/types';
 
 export function ControlPanel() {
@@ -35,6 +38,20 @@ export function ControlPanel() {
         if (p.target === 'render') updateRenderSettings({ [p.key]: v });
         else updateGlitchSettings({ [p.key]: v });
         recordChange(id, v);
+    };
+    // FIT writes SIZE, so it cannot be used where a curve would override it, or while an export reads the settings.
+    const exporting = useExportMode((s) => s.active);
+    const sizeAutomated = hasCurve(curves, 'size');
+    const fitDisabled = exporting || sizeAutomated;
+    const fitTitle = sizeAutomated
+        ? 'Clear the Size automation first'
+        : exporting
+          ? 'Not while exporting'
+          : 'Set Size to the largest value that keeps the text inside the frame, with a margin';
+    const handleFit = () => {
+        const size = computeFit();
+        if (size === null) notify('There is no text to fit yet.', { id: 'fit-empty' });
+        else setKnob('size', size);
     };
     // Which line the sequence is on, when it is on and there is more than one.
     const lineCount = settings.render.text.split('\n').filter((line) => line.trim().length > 0).length;
@@ -163,14 +180,27 @@ export function ControlPanel() {
                         <div className="flex flex-col gap-sp1">
                             <label htmlFor="f-size" className="control text-paper-dim">Size</label>
                             <AutoMark id="size" />
-                            <input
-                                id="f-size"
-                                type="range"
-                                min="0.1" max="5.0" step="0.05"
-                                value={settings.render.fontSize}
-                                onChange={(e) => setKnob('size', parseFloat(e.target.value))}
-                                disabled={blocked('size')}
-                            />
+                            <div className="flex items-center gap-sp2">
+                                <input
+                                    id="f-size"
+                                    type="range"
+                                    min="0.1" max="5.0" step="0.01"
+                                    className="min-w-0 flex-1"
+                                    value={settings.render.fontSize}
+                                    onChange={(e) => setKnob('size', parseFloat(e.target.value))}
+                                    disabled={blocked('size')}
+                                />
+                                <button
+                                    type="button"
+                                    id="f-fit"
+                                    className="btn text-acid"
+                                    onClick={handleFit}
+                                    disabled={fitDisabled}
+                                    title={fitTitle}
+                                >
+                                    Fit
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex flex-col gap-sp1">

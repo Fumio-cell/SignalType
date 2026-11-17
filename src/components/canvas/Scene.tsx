@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, type ComponentProps } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Text3D, Center } from '@react-three/drei';
 import { useAppStore } from '@/store/appStore';
 import { useAudioFeatures } from '@/lib/audio/useAudioFeatures';
@@ -12,6 +12,7 @@ import { stageInk } from '@/lib/look/stageInk';
 import { useExportMode } from '@/lib/export/stage';
 import { isTroikaText } from '@/lib/troikaText';
 import { SDF_EXPORT, SDF_PREVIEW } from '@/lib/export/atlas';
+import { registerFitProbe } from '@/lib/look/fit';
 
 // 2D text: troika downloads fallback fonts from cdn.jsdelivr.net for any glyph its font lacks. Nothing
 // here ever hands it such a character: text is split between the chosen font and the bundled Zen Kaku
@@ -61,6 +62,7 @@ export function GlitchTextScene() {
     const inkCorner0 = useMemo(() => new THREE.Box3(), []);
     const features = useAudioFeatures();
     const glitch = useAppStore(state => state.settings.glitch);
+    const camera = useThree((state) => state.camera);
 
     // Animate the text slightly based on time (independent of audio for base motion)
     // Also handle appearance/disappearance duration based on sequence beats
@@ -168,6 +170,39 @@ export function GlitchTextScene() {
     useEffect(() => {
         performance.mark('font:committed');
     }, [render.faces2D, render.faces3D]);
+
+    // FIT asks for the box the text fills at rest: the geometry in the space of the animated group, so the float, the shake
+    // and the beat are not in it. Scene units, no pixels: the answer cannot depend on the window or on the DPR.
+    const fitSize = render.fontSize;
+    const fitBevel = !is2D && render.bevelEnabled ? 0.02 : 0;
+    useEffect(
+        () =>
+            registerFitProbe(() => {
+                const root = depthRef.current;
+                if (!root) return null;
+                root.updateWorldMatrix(true, true);
+                const toRest = new THREE.Matrix4().copy(root.matrixWorld).invert();
+                const box = new THREE.Box3();
+                const part = new THREE.Box3();
+                const corner = new THREE.Vector3();
+                root.traverse((o) => {
+                    if (isTroikaText(o)) {
+                        const vb = o.textRenderInfo?.visibleBounds;
+                        if (!vb) return;
+                        const m = new THREE.Matrix4().multiplyMatrices(toRest, o.matrixWorld);
+                        for (let i = 0; i < 4; i++) box.expandByPoint(corner.set(i & 1 ? vb[2] : vb[0], i & 2 ? vb[3] : vb[1], 0).applyMatrix4(m));
+                    } else if (o instanceof THREE.Mesh && o.geometry) {
+                        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+                        if (!o.geometry.boundingBox) return;
+                        const m = new THREE.Matrix4().multiplyMatrices(toRest, o.matrixWorld);
+                        box.union(part.copy(o.geometry.boundingBox).applyMatrix4(m));
+                    }
+                });
+                if (box.isEmpty()) return null;
+                return { size: fitSize, bevel: fitBevel, min: box.min.clone(), max: box.max.clone(), camera };
+            }),
+        [fitSize, fitBevel, camera],
+    );
 
     const displayText = useMemo(() => {
         if (!render.sequenceMode || !render.text) return render.text;
