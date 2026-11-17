@@ -8,6 +8,12 @@ import type { EffectComposer as EffectComposerImpl } from 'postprocessing';
  */
 export const useExportMode = create<{ active: boolean }>(() => ({ active: false }));
 
+/**
+ * True from the moment Export is pressed until the file is saved or the export has failed. Published by the
+ * export panel; `useExportMode.active` is the later, narrower state in which the stage has taken over the renderer.
+ */
+export const useExportBusy = create<{ busy: boolean }>(() => ({ busy: false }));
+
 export type ExportResolution = '1080p' | '4K';
 
 /** Pixel size of each export resolution. Both are 16:9. */

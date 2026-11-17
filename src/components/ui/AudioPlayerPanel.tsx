@@ -134,6 +134,13 @@ export function AudioPlayerPanel() {
                     Record
                 </button>
 
+                {/* Automation can come from a recipe before any audio is loaded, and it can disable Fit, so its way out is always here. */}
+                {hasAutomation && (
+                    <button type="button" className="btn shrink-0 whitespace-nowrap" onClick={clearAllAutomation} title="Remove the automation of every knob">
+                        Clear all
+                    </button>
+                )}
+
                 {audioUrl && (
                     <div className="flex min-w-0 flex-1 items-center gap-sp3">
                         <button
@@ -144,11 +151,6 @@ export function AudioPlayerPanel() {
                         >
                             {isPlaying ? <Square className="h-4 w-4" fill="currentColor" aria-hidden="true" /> : <Play className="h-4 w-4" fill="currentColor" aria-hidden="true" />}
                         </button>
-                        {hasAutomation && (
-                            <button type="button" className="btn shrink-0 whitespace-nowrap" onClick={clearAllAutomation} title="Remove the automation of every knob">
-                                Clear all
-                            </button>
-                        )}
                         <div className="ml-sp2 flex min-w-[6rem] max-w-[24rem] flex-1 flex-col gap-sp1">
                             <div className="control flex justify-between px-sp1">
                                 <span className="text-paper">{formatTime(currentTime)}</span>

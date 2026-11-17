@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { exportVideo, ExportUnsupportedError } from '@/lib/export/exportVideo';
-import { EXPORT_SIZES, getExportStage, useExportResolution } from '@/lib/export/stage';
+import { EXPORT_SIZES, getExportStage, useExportBusy, useExportResolution } from '@/lib/export/stage';
+import { audioEncoderProblem } from '@/lib/export/audioTrack';
 import { fontSettled } from '@/lib/fontLoader';
 import { DEMO_MODE, DEMO_MAX_SECONDS, BUY_URL } from '@/config';
 import { notify } from '@/lib/notify';
@@ -11,8 +12,19 @@ export function ExportPanel() {
     const { duration } = useAppStore();
     const resolution = useExportResolution((s) => s.resolution);
     const setResolution = useExportResolution((s) => s.set);
-    const [format, setFormat] = useState<'mp4' | 'zip'>('mp4');
-    const [isExporting, setIsExporting] = useState(false);
+    const [format, setFormat] = useState<'mp4' | 'mp4-audio' | 'zip'>('mp4');
+    // Published, so the controls that must not change while a file is being made (Fit) are off from the click on Export.
+    const isExporting = useExportBusy((s) => s.busy);
+    const setIsExporting = (busy: boolean) => useExportBusy.setState({ busy });
+    // undefined: not checked yet; null: the browser can encode AAC; a string: why it cannot.
+    const [audioProblem, setAudioProblem] = useState<string | null | undefined>(undefined);
+    useEffect(() => {
+        let live = true;
+        audioEncoderProblem().then((problem) => live && setAudioProblem(problem));
+        return () => {
+            live = false;
+        };
+    }, []);
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
     const [demoLimited, setDemoLimited] = useState(false);
@@ -48,6 +60,7 @@ export function ExportPanel() {
                     height,
                     fps: 30,
                     format,
+                    audio: useAppStore.getState().audioBuffer,
                     duration,
                     stage,
                     onProgress: (p, status) => {
@@ -93,11 +106,14 @@ export function ExportPanel() {
             <select
                 aria-label="Format"
                 value={format}
-                onChange={(e) => setFormat(e.target.value as 'mp4' | 'zip')}
+                onChange={(e) => setFormat(e.target.value as 'mp4' | 'mp4-audio' | 'zip')}
                 className="field !w-auto !py-sp1"
                 disabled={isExporting}
             >
                 <option value="mp4">.MP4</option>
+                <option value="mp4-audio" disabled={audioProblem !== null}>
+                    {audioProblem ? `.MP4 (with audio) – unavailable: ${audioProblem}` : '.MP4 (with audio)'}
+                </option>
                 <option value="zip">.ZIP (PNG sequence, alpha)</option>
             </select>
 

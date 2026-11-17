@@ -2,13 +2,18 @@ import { ArrayBufferTarget as MP4ArrayBufferTarget, Muxer as MP4Muxer } from 'mp
 import JSZip from 'jszip';
 import { DEMO_MODE, DEMO_MAX_SECONDS } from '@/config';
 import type { ExportStage } from './stage';
+import { audioEncoderProblem, encodeAudio, type EncodedAudio } from './audioTrack';
+import { addAudioEditList } from './mp4Edit';
 
 export interface ExportOptions {
     width: number;
     height: number;
     fps: number;
-    format: 'mp4' | 'zip';
+    /** 'mp4' is silent (for compositing), 'mp4-audio' carries the loaded track, 'zip' is the PNG sequence. */
+    format: 'mp4' | 'mp4-audio' | 'zip';
     duration: number; // in seconds
+    /** The loaded track; the audio of 'mp4-audio' is its first `duration` seconds. */
+    audio?: AudioBuffer | null;
     onProgress?: (progress: number, status: string) => void;
     stage: ExportStage;
 }
@@ -69,8 +74,8 @@ async function pickEncoderConfig(width: number, height: number, fps: number): Pr
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-export function exportFileName(width: number, height: number, fps: number, ext: 'mp4' | 'zip'): string {
-    return `signaltype_${width}x${height}_${fps}fps.${ext}`;
+export function exportFileName(width: number, height: number, fps: number, ext: 'mp4' | 'zip', withAudio = false): string {
+    return `signaltype_${width}x${height}_${fps}fps${withAudio ? '_audio' : ''}.${ext}`;
 }
 
 export async function exportVideo(options: ExportOptions): Promise<void> {
@@ -82,6 +87,7 @@ export async function exportVideo(options: ExportOptions): Promise<void> {
     onProgress?.(0, 'Initializing...');
 
     const isPngSequence = format === 'zip';
+    const withAudio = format === 'mp4-audio';
 
     let muxer: MP4Muxer<MP4ArrayBufferTarget> | null = null;
     let videoEncoder: VideoEncoder | null = null;
@@ -91,6 +97,26 @@ export async function exportVideo(options: ExportOptions): Promise<void> {
     let encoderConfig: VideoEncoderConfig | null = null;
     if (!isPngSequence) encoderConfig = await pickEncoderConfig(width, height, fps);
 
+    // The audio is encoded before the stage starts: it does not depend on the frames, and the frames do not depend on it.
+    let sound: EncodedAudio | null = null;
+    if (withAudio) {
+        const problem = await audioEncoderProblem();
+        if (problem) throw new ExportUnsupportedError(`An MP4 with audio is not possible: ${problem}. Export the silent MP4 or a PNG sequence.`);
+        if (!options.audio) throw new Error('There is no audio to put in the file.');
+        onProgress?.(0, 'Encoding audio...');
+        // Exactly as long as the video, which is a whole number of frames.
+        sound = await encodeAudio(options.audio, totalFrames / fps);
+    }
+    let nextSound = 0;
+    // Hands the muxer the audio up to `until` (seconds), so the two tracks interleave in the file.
+    const feedAudio = (until: number) => {
+        if (!sound || !muxer) return;
+        while (nextSound < sound.chunks.length && sound.chunks[nextSound].chunk.timestamp <= until * 1_000_000) {
+            const { chunk, meta } = sound.chunks[nextSound++];
+            muxer.addAudioChunk(chunk, meta);
+        }
+    };
+
     let zip: JSZip | null = null;
 
     await stage.begin(width, height);
@@ -99,6 +125,7 @@ export async function exportVideo(options: ExportOptions): Promise<void> {
             muxer = new MP4Muxer({
                 target: new MP4ArrayBufferTarget(),
                 video: { codec: 'avc', width, height },
+                ...(sound && { audio: { codec: 'aac' as const, numberOfChannels: sound.numberOfChannels, sampleRate: sound.sampleRate } }),
                 fastStart: 'in-memory',
             });
             videoEncoder = new VideoEncoder({
@@ -139,6 +166,7 @@ export async function exportVideo(options: ExportOptions): Promise<void> {
                 frame.close();
                 // Do not let a slow encoder (4K) queue up unbounded frames.
                 while (videoEncoder.encodeQueueSize > 6) await sleep(4);
+                feedAudio((f + 1) / fps);
                 onProgress?.((f / totalFrames) * 0.8, 'Encoding MP4 frames...');
                 if (f % 4 === 0) await sleep(0);
             }
@@ -158,9 +186,13 @@ export async function exportVideo(options: ExportOptions): Promise<void> {
         onProgress?.(0.8, 'Finalizing MP4...');
         await videoEncoder.flush();
         if (encoderError) throw encoderError;
+        feedAudio(Infinity);
         muxer.finalize();
+        let file: Uint8Array<ArrayBuffer> = new Uint8Array(muxer.target.buffer);
+        // The sound starts `priming` samples into the audio media and ends with the picture.
+        if (sound) file = addAudioEditList(file, sound.priming, sound.samples / sound.sampleRate);
         onProgress?.(1.0, 'Done');
-        downloadBlob(new Blob([muxer.target.buffer], { type: 'video/mp4' }), exportFileName(width, height, fps, 'mp4'));
+        downloadBlob(new Blob([file], { type: 'video/mp4' }), exportFileName(width, height, fps, 'mp4', withAudio));
     }
 }
 

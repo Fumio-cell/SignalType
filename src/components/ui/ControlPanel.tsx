@@ -14,7 +14,7 @@ import { recordChange } from '@/lib/automation/engine';
 import { PARAM_BY_ID } from '@/lib/automation/params';
 import { computeFit } from '@/lib/look/fit';
 import { notify } from '@/lib/notify';
-import { useExportMode } from '@/lib/export/stage';
+import { useExportBusy } from '@/lib/export/stage';
 import type { AutomationParamId } from '@/lib/automation/types';
 
 export function ControlPanel() {
@@ -39,8 +39,9 @@ export function ControlPanel() {
         else updateGlitchSettings({ [p.key]: v });
         recordChange(id, v);
     };
-    // FIT writes SIZE, so it cannot be used where a curve would override it, or while an export reads the settings.
-    const exporting = useExportMode((s) => s.active);
+    // FIT writes SIZE, so it cannot be used where a curve would override it, or while an export reads the settings
+    // (from the click on Export, not only from the moment the stage takes over).
+    const exporting = useExportBusy((s) => s.busy);
     const sizeAutomated = hasCurve(curves, 'size');
     const fitDisabled = exporting || sizeAutomated;
     const fitTitle = sizeAutomated
